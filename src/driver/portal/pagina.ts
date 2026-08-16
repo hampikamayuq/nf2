@@ -66,11 +66,15 @@ export async function preencherNativo(page: Page, entrada: EntradaSeletor, valor
  * tem `texto` — o mesmo caminho que as skills usam hoje).
  */
 export async function clicar(page: Page, entrada: EntradaSeletor): Promise<void> {
-  try {
-    await page.locator(entrada.seletor).first().click({ timeout: TIMEOUT_CLIQUE_MS });
-    return;
-  } catch {
-    // segue para o fallback por JS
+  // Radios/checkboxes estilizados ficam display:none no portal — o Playwright
+  // recusaria o clique por invisibilidade, então nem tenta: JS direto.
+  if (!entrada.viaJs) {
+    try {
+      await page.locator(entrada.seletor).first().click({ timeout: TIMEOUT_CLIQUE_MS });
+      return;
+    } catch {
+      // segue para o fallback por JS
+    }
   }
 
   const ok = await page.evaluate(
@@ -100,12 +104,63 @@ export async function clicar(page: Page, entrada: EntradaSeletor): Promise<void>
   }
 }
 
+/** Marca (ou desmarca) um checkbox de forma idempotente, via JS — os do portal também são estilizados/ocultos. */
+export async function marcarCheckbox(page: Page, entrada: EntradaSeletor, desejado: boolean): Promise<void> {
+  const ok = await page.evaluate(
+    ([seletor, valor]) => {
+      let el: Element | null = null;
+      try {
+        el = document.querySelector(seletor as string);
+      } catch {
+        return false;
+      }
+      if (!(el instanceof HTMLInputElement)) return false;
+      if (el.checked !== valor) el.click();
+      return true;
+    },
+    [entrada.seletor, desejado] as const
+  );
+  if (!ok) {
+    throw new SeletorNaoEncontradoError(entrada, 'Checkbox não encontrado na página.');
+  }
+}
+
 /**
- * Dropdown estilizado/filtrável: clica no controle para abrir, digita o
- * texto, clica na opção que o contém. É o fallback de UI documentado nas
- * skills — aqui ele é o caminho PADRÃO para toda entrada com `fallbackUi`.
+ * Dropdown estilizado/filtrável. Caminho 1: se o alvo é um `<select>` (ainda
+ * que oculto atrás do widget), seta a opção por value/texto com setter nativo
+ * + change — é o `setSel` das skills. Caminho 2 (fallback de UI, também das
+ * skills): clica no controle, digita, clica na opção que aparece.
  */
 export async function selecionarDropdownFiltravel(page: Page, entrada: EntradaSeletor, texto: string): Promise<void> {
+  const viaSelect = await page.evaluate(
+    ([seletor, valor]) => {
+      let el: Element | null = null;
+      try {
+        el = document.querySelector(seletor as string);
+      } catch {
+        return 'nao-achou';
+      }
+      if (!el) return 'nao-achou';
+      if (!(el instanceof HTMLSelectElement)) return 'nao-e-select';
+      const busca = (valor as string).toLowerCase();
+      const opcoes = Array.from(el.options);
+      const alvo = opcoes.find((o) => o.value === valor) ?? opcoes.find((o) => o.label.toLowerCase().includes(busca));
+      if (!alvo) return 'sem-opcao';
+      el.value = alvo.value;
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+      el.dispatchEvent(new Event('change', { bubbles: true }));
+      return 'ok';
+    },
+    [entrada.seletor, texto] as const
+  );
+  if (viaSelect === 'ok') return;
+  if (viaSelect === 'sem-opcao') {
+    throw new SeletorNaoEncontradoError(
+      entrada,
+      `O <select> existe mas nenhuma opção tem value nem texto correspondendo a "${texto}" — ajuste o valor no perfil da empresa.`
+    );
+  }
+
   await clicar(page, entrada);
   await page.keyboard.type(texto, { delay: 30 });
 

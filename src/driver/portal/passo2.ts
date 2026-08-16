@@ -25,18 +25,11 @@ export async function preencherPasso2(page: Page, nota: Nota, empresa: Empresa):
     : nota.servico.descricao;
   await preencherNativo(page, s.descricaoServico!, descricao);
 
+  // Os radios de IBS/CBS (preencher/compra gov/destinatário) ficam no Passo 1
+  // (inventário 16/08/2026). Aqui restam os dropdowns do bloco — só quando o
+  // perfil pede o preenchimento.
   const ibs = p2.ibsCbs;
-  if (!ibs.preencher) {
-    await clicar(page, s.ibsCbsPreencherNao!);
-    return;
-  }
-
-  await clicar(page, s.ibsCbsPreencherSim!);
-  await clicar(page, ibs.compraGovernamental ? s.ibsCbsCompraGovSim! : s.ibsCbsCompraGovNao!);
-  await clicar(
-    page,
-    ibs.destinatarioProprioAdquirente ? s.ibsCbsDestinatarioAdquirenteSim! : s.ibsCbsDestinatarioAdquirenteNao!
-  );
+  if (!ibs.preencher) return;
   await selecionarDropdownFiltravel(page, s.ibsCbsItemNbs!, ibs.itemNbs);
   await selecionarDropdownFiltravel(page, s.ibsCbsCodigoIndicadorOperacao!, ibs.codigoIndicadorOperacao);
   await selecionarDropdownFiltravel(page, s.ibsCbsSituacaoTributaria!, ibs.codigoSituacaoTributaria);

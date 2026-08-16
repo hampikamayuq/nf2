@@ -8,20 +8,24 @@ describe('mapa de seletores', () => {
     expect(VERSAO_MAPA).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 
-  it('todas as entradas têm seletor por id e descrição', () => {
+  it('todas as entradas têm seletor por id ou por name+value (radios com id duplicado no portal) e descrição', () => {
     for (const passo of PASSOS) {
       for (const { nome, entrada } of entradasDoPasso(passo)) {
-        expect(entrada.seletor, `${passo}.${nome}`).toMatch(/^#\w/);
+        expect(entrada.seletor, `${passo}.${nome}`).toMatch(/^(#\w|input\[name=)/);
         expect(entrada.descricao.length, `${passo}.${nome}`).toBeGreaterThan(0);
       }
     }
   });
 
-  it('não repete seletor entre entradas (uma quebra = um lugar para corrigir)', () => {
+  it('não repete seletor entre entradas diferentes (o Avançar é o MESMO #btnAvancar em todos os passos)', () => {
     const vistos = new Map<string, string>();
     for (const passo of PASSOS) {
       for (const { nome, entrada } of entradasDoPasso(passo)) {
-        expect(vistos.get(entrada.seletor), `${entrada.seletor} repetido em ${vistos.get(entrada.seletor)} e ${passo}.${nome}`).toBeUndefined();
+        const anterior = vistos.get(entrada.seletor);
+        if (anterior) {
+          const nomeAnterior = anterior.split('.')[1];
+          expect(nomeAnterior, `${entrada.seletor} repetido em ${anterior} e ${passo}.${nome}`).toBe(nome);
+        }
         vistos.set(entrada.seletor, `${passo}.${nome}`);
       }
     }
@@ -34,19 +38,24 @@ describe('mapa de seletores', () => {
     expect(SELETORES.passo4.emitir?.texto).toBe('Emitir NFS-e');
   });
 
-  it('o bloco IBS/CBS inteiro segue marcado como não confirmado em produção (risco #4 do PLANO)', () => {
+  it('os dropdowns de IBS/CBS do Passo 2 seguem não confirmados (risco #4 do PLANO — falta o inventário do passo)', () => {
     const naoConfirmados = entradasNaoConfirmadas().map((e) => `${e.passo}.${e.nome}`);
     for (const nome of Object.keys(SELETORES.passo2).filter((n) => n.startsWith('ibsCbs'))) {
       expect(naoConfirmados).toContain(`passo2.${nome}`);
     }
   });
 
-  it('só a data de competência está confirmada até agora (verificada pelo spike da Fase 1)', () => {
-    const confirmados = PASSOS.flatMap((passo) =>
-      entradasDoPasso(passo)
-        .filter(({ entrada }) => entrada.confirmado)
-        .map(({ nome }) => `${passo}.${nome}`)
-    );
-    expect(confirmados).toEqual(['passo1.dataCompetencia']);
+  it('o Passo 1 inteiro está confirmado pelo inventário real de 16/08/2026', () => {
+    for (const { nome, entrada } of entradasDoPasso('passo1')) {
+      expect(entrada.confirmado, `passo1.${nome}`).toBe(true);
+    }
+  });
+
+  it('passos 2–4 seguem aguardando inventário (nenhuma entrada confirmada ainda)', () => {
+    for (const passo of ['passo2', 'passo3', 'passo4'] as const) {
+      for (const { nome, entrada } of entradasDoPasso(passo)) {
+        expect(entrada.confirmado, `${passo}.${nome}`).toBe(false);
+      }
+    }
   });
 });

@@ -32,68 +32,167 @@ export interface EntradaSeletor {
   opcional?: boolean;
   /** Texto visível do elemento — usado no fallback de clique por JS quando o seletor CSS não resolve. */
   texto?: string;
+  /**
+   * Radio/checkbox estilizado que fica `display:none` no portal (o clique
+   * visível é no label): o Playwright recusa clicar em elemento invisível,
+   * então o clique vai DIRETO por JS (`el.click()`), como as skills fazem.
+   */
+  viaJs?: boolean;
 }
 
 export const SELETORES: Record<NomePasso, Record<string, EntradaSeletor>> = {
-  // Passo 1 — /DPS/Pessoas: competência, tomador, endereço.
+  // Passo 1 — /DPS/Pessoas: competência, regime SN, IBS/CBS (os radios ficam
+  // AQUI, não no Passo 2 — confirmado pelo inventário de 16/08/2026), tomador
+  // e endereço. Radios do portal têm ids duplicados (um por opção com o MESMO
+  // id), então a seleção é por name+value.
   passo1: {
     dataCompetencia: {
       seletor: '#DataCompetencia',
       descricao: 'Data de Competência (sempre hoje — preenchida pelo driver, nunca pela planilha)',
-      confirmado: true, // verificado pelo spike da Fase 1
+      confirmado: true, // spike da Fase 1 + inventário 16/08/2026
     },
     regimeApuracaoSN: {
-      seletor: '#RegimeApuracaoSN',
-      descricao: 'Regime de Apuração dos Tributos no Simples Nacional (só QARA)',
-      confirmado: false,
+      seletor: '#SimplesNacional_RegimeApuracaoTributosSN',
+      descricao: 'Regime de Apuração dos Tributos no Simples Nacional (select oculto/estilizado — só QARA)',
+      confirmado: true,
       fallbackUi: true,
       opcional: true,
+    },
+    ibsCbsPreencherSim: {
+      seletor: 'input[name="PreencherInfoIBSCBS"][value="1"]',
+      descricao: 'IBS/CBS: "Deseja preencher?" = Sim (radio oculto, fica no Passo 1)',
+      confirmado: true,
+      viaJs: true,
+    },
+    ibsCbsPreencherNao: {
+      seletor: 'input[name="PreencherInfoIBSCBS"][value="0"]',
+      descricao: 'IBS/CBS: "Deseja preencher?" = Não',
+      confirmado: true,
+      viaJs: true,
+      opcional: true,
+    },
+    compraGovSim: {
+      seletor: 'input[name="EhCompraGovernamental"][value="1"]',
+      descricao: 'IBS/CBS: compra governamental = Sim',
+      confirmado: true,
+      viaJs: true,
+      opcional: true,
+    },
+    compraGovNao: {
+      seletor: 'input[name="EhCompraGovernamental"][value="0"]',
+      descricao: 'IBS/CBS: compra governamental = Não',
+      confirmado: true,
+      viaJs: true,
+    },
+    destinatarioAdquirenteSim: {
+      seletor: 'input[name="DestinatarioEhOAdquirente"][value="1"]',
+      descricao: 'IBS/CBS: destinatário é o próprio adquirente = Sim',
+      confirmado: true,
+      viaJs: true,
+    },
+    destinatarioAdquirenteNao: {
+      seletor: 'input[name="DestinatarioEhOAdquirente"][value="0"]',
+      descricao: 'IBS/CBS: destinatário é o próprio adquirente = Não',
+      confirmado: true,
+      viaJs: true,
+      opcional: true,
+    },
+    tomadorBrasil: {
+      seletor: 'input[name="Tomador.LocalDomicilio"][value="1"]',
+      descricao: 'Tomador domiciliado no Brasil (caso CPF)',
+      confirmado: true,
+      viaJs: true,
+    },
+    tomadorExterior: {
+      seletor: 'input[name="Tomador.LocalDomicilio"][value="2"]',
+      descricao: 'Tomador domiciliado no Exterior (estrangeiro/turista)',
+      confirmado: true,
+      viaJs: true,
+      opcional: true,
+    },
+    tomadorNaoInformado: {
+      seletor: 'input[name="Tomador.LocalDomicilio"][value="0"]',
+      descricao: 'Tomador/Adquirente não informado',
+      confirmado: true,
+      viaJs: true,
     },
     cpfTomador: {
       seletor: '#Tomador_Inscricao',
       descricao: 'CPF do tomador',
-      confirmado: false,
+      confirmado: true,
     },
-    casosEspeciais: {
-      seletor: '#TomadorCasoEspecial',
-      descricao: 'Casos especiais — tomador sem CPF (estrangeiro residente | turista | não informado)',
-      confirmado: false,
-      fallbackUi: true,
+    pesquisarCpf: {
+      seletor: '#btn_Tomador_Inscricao_pesquisar',
+      descricao: 'Botão de pesquisa do CPF (puxa o nome do cadastro)',
+      confirmado: true,
       opcional: true,
     },
     nomeTomador: {
       seletor: '#Tomador_Nome',
-      descricao: 'Nome do tomador (só nos casos sem CPF)',
-      confirmado: false,
+      descricao: 'Nome do tomador (preenchido pela pesquisa de CPF; manual nos casos sem CPF)',
+      confirmado: true,
+      opcional: true,
+    },
+    nifInformadoSim: {
+      seletor: 'input[name="Tomador.NIFInformado"][value="1"]',
+      descricao: 'Tomador do exterior: NIF informado = Sim',
+      confirmado: true,
+      viaJs: true,
+      opcional: true,
+    },
+    nifInformadoNao: {
+      seletor: 'input[name="Tomador.NIFInformado"][value="0"]',
+      descricao: 'Tomador do exterior: NIF informado = Não',
+      confirmado: true,
+      viaJs: true,
       opcional: true,
     },
     nifTomador: {
-      seletor: '#Tomador_Nif',
-      descricao: 'NIF do tomador estrangeiro residente',
-      confirmado: false,
+      seletor: '#Tomador_NIF',
+      descricao: 'NIF do tomador estrangeiro',
+      confirmado: true,
       opcional: true,
     },
-    paisTomador: {
-      seletor: '#Tomador_Pais',
-      descricao: 'País do turista',
-      confirmado: false,
+    motivoNaoInformacaoNIF: {
+      seletor: '#Tomador_MotivoNaoInformacaoNIF',
+      descricao: 'Motivo de não informação do NIF (Dispensado | Não exigência)',
+      confirmado: true,
       fallbackUi: true,
       opcional: true,
     },
+    paisTomador: {
+      seletor: '#Tomador_EnderecoExterior_CodigoPais',
+      descricao: 'País do tomador do exterior (select estilizado)',
+      confirmado: true,
+      fallbackUi: true,
+      opcional: true,
+    },
+    informarEndereco: {
+      seletor: '#Tomador_InformarEndereco',
+      descricao: 'Checkbox "Informar endereço" — destrava os campos de CEP/número',
+      confirmado: true,
+      viaJs: true,
+    },
     cepTomador: {
-      seletor: '#Tomador_Endereco_Cep',
-      descricao: 'CEP do tomador',
-      confirmado: false,
+      seletor: '#Tomador_EnderecoNacional_CEP',
+      descricao: 'CEP do tomador (aparece após marcar "Informar endereço")',
+      confirmado: true,
+    },
+    buscarCep: {
+      seletor: '#btn_Tomador_EnderecoNacional_CEP',
+      descricao: 'Botão de busca do CEP (preenche logradouro/bairro/município)',
+      confirmado: true,
+      opcional: true,
     },
     numeroEndereco: {
-      seletor: '#Tomador_Endereco_Numero',
+      seletor: '#Tomador_EnderecoNacional_Numero',
       descricao: 'Número do endereço do tomador',
-      confirmado: false,
+      confirmado: true,
     },
     avancar: {
-      seletor: '#btnAvancarPasso1',
-      descricao: 'Botão Avançar do Passo 1',
-      confirmado: false,
+      seletor: '#btnAvancar',
+      descricao: 'Botão Avançar (submit — mesmo id em todos os passos)',
+      confirmado: true,
       texto: 'Avançar',
     },
   },
@@ -123,42 +222,9 @@ export const SELETORES: Record<NomePasso, Record<string, EntradaSeletor>> = {
       descricao: 'Descrição do serviço (template do catálogo, com CRM/RQE e data do atendimento)',
       confirmado: false,
     },
-    // Bloco IBS/CBS — Reforma Tributária, obrigatório desde 01/08/2026.
-    // Nenhum id confirmado em produção ainda (as próprias skills admitem isso);
-    // radios Sim/Não são entradas separadas para a page object clicar direto no certo.
-    ibsCbsPreencherSim: {
-      seletor: '#IbsCbs_Preencher_Sim',
-      descricao: 'IBS/CBS: "Deseja preencher?" = Sim',
-      confirmado: false,
-    },
-    ibsCbsPreencherNao: {
-      seletor: '#IbsCbs_Preencher_Nao',
-      descricao: 'IBS/CBS: "Deseja preencher?" = Não',
-      confirmado: false,
-      opcional: true,
-    },
-    ibsCbsCompraGovSim: {
-      seletor: '#IbsCbs_CompraGovernamental_Sim',
-      descricao: 'IBS/CBS: compra governamental = Sim',
-      confirmado: false,
-      opcional: true,
-    },
-    ibsCbsCompraGovNao: {
-      seletor: '#IbsCbs_CompraGovernamental_Nao',
-      descricao: 'IBS/CBS: compra governamental = Não',
-      confirmado: false,
-    },
-    ibsCbsDestinatarioAdquirenteSim: {
-      seletor: '#IbsCbs_DestinatarioAdquirente_Sim',
-      descricao: 'IBS/CBS: destinatário é o próprio adquirente = Sim',
-      confirmado: false,
-    },
-    ibsCbsDestinatarioAdquirenteNao: {
-      seletor: '#IbsCbs_DestinatarioAdquirente_Nao',
-      descricao: 'IBS/CBS: destinatário é o próprio adquirente = Não',
-      confirmado: false,
-      opcional: true,
-    },
+    // Bloco IBS/CBS restante — os radios (preencher/compra gov/destinatário)
+    // moraram no Passo 1 (inventário 16/08/2026); aqui ficam os dropdowns de
+    // NBS/indicador/CST/classificação, ainda sem id confirmado.
     ibsCbsItemNbs: {
       seletor: '#IbsCbs_ItemNbs',
       descricao: 'IBS/CBS: Item NBS (123012100 — Serviços de clínica médica)',
@@ -184,8 +250,8 @@ export const SELETORES: Record<NomePasso, Record<string, EntradaSeletor>> = {
       fallbackUi: true,
     },
     avancar: {
-      seletor: '#btnAvancarPasso2',
-      descricao: 'Botão Avançar do Passo 2',
+      seletor: '#btnAvancar',
+      descricao: 'Botão Avançar (mesmo id do Passo 1; a confirmar neste passo)',
       confirmado: false,
       texto: 'Avançar',
     },
@@ -242,8 +308,8 @@ export const SELETORES: Record<NomePasso, Record<string, EntradaSeletor>> = {
       opcional: true,
     },
     avancar: {
-      seletor: '#btnAvancarPasso3',
-      descricao: 'Botão Avançar do Passo 3',
+      seletor: '#btnAvancar',
+      descricao: 'Botão Avançar (mesmo id do Passo 1; a confirmar neste passo)',
       confirmado: false,
       texto: 'Avançar',
     },

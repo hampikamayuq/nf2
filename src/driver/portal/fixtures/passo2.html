@@ -28,22 +28,7 @@
       <p><label>Descrição do serviço <textarea id="Servico_Descricao"></textarea></label></p>
 
       <fieldset>
-        <legend>IBS/CBS (Reforma Tributária)</legend>
-        <p>
-          Deseja preencher?
-          <label><input type="radio" name="ibsPreencher" id="IbsCbs_Preencher_Sim" /> Sim</label>
-          <label><input type="radio" name="ibsPreencher" id="IbsCbs_Preencher_Nao" /> Não</label>
-        </p>
-        <p>
-          Compra governamental?
-          <label><input type="radio" name="ibsCompraGov" id="IbsCbs_CompraGovernamental_Sim" /> Sim</label>
-          <label><input type="radio" name="ibsCompraGov" id="IbsCbs_CompraGovernamental_Nao" /> Não</label>
-        </p>
-        <p>
-          Destinatário é o próprio adquirente?
-          <label><input type="radio" name="ibsDestinatario" id="IbsCbs_DestinatarioAdquirente_Sim" /> Sim</label>
-          <label><input type="radio" name="ibsDestinatario" id="IbsCbs_DestinatarioAdquirente_Nao" /> Não</label>
-        </p>
+        <legend>IBS/CBS (Reforma Tributária) — os radios Sim/Não ficam no Passo 1</legend>
         <p>
           Item NBS
           <span id="IbsCbs_ItemNbs" class="dropdown-filtravel" data-opcoes="123012100 - Serviços de clínica médica|123012200 - Outro serviço de saúde"></span>
@@ -62,7 +47,7 @@
         </p>
       </fieldset>
     </form>
-    <button id="btnAvancarPasso2" onclick="location.href='passo3.html'">Avançar</button>
+    <button id="btnAvancar" onclick="location.href='passo3.html'">Avançar</button>
     <script src="widgets.js"></script>
   </body>
 </html>

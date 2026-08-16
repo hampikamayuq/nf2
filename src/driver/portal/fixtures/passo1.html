@@ -1,39 +1,85 @@
 <!doctype html>
-<!-- Fixture sintética do Passo 1 (Pessoas). Sem dado de paciente.
-     Os ids espelham src/driver/portal/seletores.ts — se o mapa mudar,
-     o teste de fixtures quebra e obriga a manter os dois em sincronia. -->
+<!-- Fixture do Passo 1 (Pessoas) espelhando o INVENTÁRIO REAL de 16/08/2026:
+     radios estilizados ocultos (com id duplicado por opção, como no portal),
+     selects nativos atrás de widget, campos de endereço atrás do checkbox
+     "Informar endereço", e um único #btnAvancar. Sem dado de paciente. -->
 <html lang="pt-BR">
   <head>
     <meta charset="utf-8" />
     <title>Passo 1 — Pessoas (fixture)</title>
     <style>
-      li { cursor: pointer; }
-      .dropdown-filtravel { border: 1px solid #999; padding: 4px; display: inline-block; min-width: 220px; }
+      .radio-oculto { display: none; }
     </style>
   </head>
   <body>
     <h1>Emissão de NFS-e — Passo 1: Pessoas</h1>
     <form>
-      <p><label>Data de Competência <input id="DataCompetencia" /></label></p>
+      <p><label>Data de Competência <input id="DataCompetencia" name="DataCompetencia" /></label></p>
+
       <p>
-        Regime de Apuração dos Tributos no Simples Nacional
-        <span id="RegimeApuracaoSN" class="dropdown-filtravel" data-opcoes="1 - Alíquota efetiva do Simples Nacional|2 - Valor fixo"></span>
+        Simples Nacional — Regime de Apuração
+        <select id="SimplesNacional_RegimeApuracaoTributosSN" name="SimplesNacional.RegimeApuracaoTributosSN">
+          <option value="">Selecione...</option>
+          <option value="1">Regime de apuração dos tributos federais e municipal pelo Simples Nacional</option>
+          <option value="2">Regime de apuração dos tributos federais pelo Simples Nacional</option>
+          <option value="3">Regime de apuração dos tributos federais e municipal pela NFS-e</option>
+        </select>
       </p>
-      <p><label>CPF do tomador <input id="Tomador_Inscricao" /></label></p>
+
       <p>
-        Casos especiais — sem CPF
-        <span id="TomadorCasoEspecial" class="dropdown-filtravel" data-opcoes="Estrangeiro residente|Turista|Não informado"></span>
+        IBS/CBS — Deseja preencher?
+        <input type="radio" class="radio-oculto" id="PreencherInfoIBSCBS" name="PreencherInfoIBSCBS" value="1" />
+        <input type="radio" class="radio-oculto" id="PreencherInfoIBSCBS" name="PreencherInfoIBSCBS" value="0" />
+        Compra governamental?
+        <input type="radio" class="radio-oculto" id="EhCompraGovernamental" name="EhCompraGovernamental" value="1" />
+        <input type="radio" class="radio-oculto" id="EhCompraGovernamental" name="EhCompraGovernamental" value="0" />
+        Destinatário é o próprio adquirente?
+        <input type="radio" class="radio-oculto" id="DestinatarioEhOAdquirente" name="DestinatarioEhOAdquirente" value="1" />
+        <input type="radio" class="radio-oculto" id="DestinatarioEhOAdquirente" name="DestinatarioEhOAdquirente" value="0" />
       </p>
-      <p><label>Nome <input id="Tomador_Nome" /></label></p>
-      <p><label>NIF <input id="Tomador_Nif" /></label></p>
+
       <p>
-        País
-        <span id="Tomador_Pais" class="dropdown-filtravel" data-opcoes="Argentina|Portugal|Uruguai"></span>
+        Tomador — local do domicílio
+        <input type="radio" class="radio-oculto" id="Tomador_LocalDomicilio" name="Tomador.LocalDomicilio" value="1" />
+        <input type="radio" class="radio-oculto" id="Tomador_LocalDomicilio" name="Tomador.LocalDomicilio" value="2" />
+        <input type="radio" class="radio-oculto" id="Tomador_LocalDomicilio" name="Tomador.LocalDomicilio" value="0" />
       </p>
-      <p><label>CEP <input id="Tomador_Endereco_Cep" /></label></p>
-      <p><label>Número <input id="Tomador_Endereco_Numero" /></label></p>
+
+      <p>
+        <label>CPF do tomador <input id="Tomador_Inscricao" name="Tomador.Inscricao" /></label>
+        <button type="button" id="btn_Tomador_Inscricao_pesquisar">Pesquisar</button>
+      </p>
+      <p><label>Nome <input id="Tomador_Nome" name="Tomador.Nome" /></label></p>
+
+      <p>
+        NIF informado?
+        <input type="radio" class="radio-oculto" id="Tomador_NIFInformado" name="Tomador.NIFInformado" value="1" />
+        <input type="radio" class="radio-oculto" id="Tomador_NIFInformado" name="Tomador.NIFInformado" value="0" />
+        <label>NIF <input id="Tomador_NIF" name="Tomador.NIF" /></label>
+        <select id="Tomador_MotivoNaoInformacaoNIF" name="Tomador.MotivoNaoInformacaoNIF">
+          <option value="">Selecione...</option>
+          <option value="1">Dispensado do NIF</option>
+          <option value="2">Não exigência do NIF</option>
+        </select>
+      </p>
+
+      <p>
+        <input type="checkbox" class="radio-oculto" id="Tomador_InformarEndereco" name="Tomador.InformarEndereco" value="true" />
+        <label>CEP <input id="Tomador_EnderecoNacional_CEP" name="Tomador.EnderecoNacional.CEP" /></label>
+        <button type="button" id="btn_Tomador_EnderecoNacional_CEP">Buscar CEP</button>
+        <label>Número <input id="Tomador_EnderecoNacional_Numero" name="Tomador.EnderecoNacional.Numero" /></label>
+      </p>
+
+      <p>
+        País (exterior)
+        <select id="Tomador_EnderecoExterior_CodigoPais" name="Tomador.EnderecoExterior.CodigoPais">
+          <option value="">Selecione...</option>
+          <option value="ARG">Argentina</option>
+          <option value="PRT">Portugal</option>
+          <option value="URY">Uruguai</option>
+        </select>
+      </p>
     </form>
-    <button id="btnAvancarPasso1" onclick="location.href='passo2.html'">Avançar</button>
-    <script src="widgets.js"></script>
+    <button id="btnAvancar" onclick="location.href='passo2.html'">Avançar</button>
   </body>
 </html>

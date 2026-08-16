@@ -72,7 +72,7 @@ describe.skipIf(!RODAR_TESTES_DE_NAVEGADOR)('page objects contra as fixtures dos
     await expect(driver.emitir()).rejects.toThrow(/prepararNota/);
   });
 
-  it('Passo 1: competência é HOJE (nunca a data de atendimento) e CPF/CEP entram sem máscara', async () => {
+  it('Passo 1: competência é HOJE, CPF/CEP sem máscara, radios ocultos e select de regime via JS', async () => {
     await page.goto(urlFixture('passo1.html'));
     await preencherPasso1(
       page,
@@ -83,15 +83,27 @@ describe.skipIf(!RODAR_TESTES_DE_NAVEGADOR)('page objects contra as fixtures dos
     const valores = await page.evaluate(() => ({
       competencia: (document.getElementById('DataCompetencia') as HTMLInputElement).value,
       cpf: (document.getElementById('Tomador_Inscricao') as HTMLInputElement).value,
-      cep: (document.getElementById('Tomador_Endereco_Cep') as HTMLInputElement).value,
-      numero: (document.getElementById('Tomador_Endereco_Numero') as HTMLInputElement).value,
-      regime: document.getElementById('RegimeApuracaoSN')?.getAttribute('data-valor'),
+      cep: (document.getElementById('Tomador_EnderecoNacional_CEP') as HTMLInputElement).value,
+      numero: (document.getElementById('Tomador_EnderecoNacional_Numero') as HTMLInputElement).value,
+      regime: (document.getElementById('SimplesNacional_RegimeApuracaoTributosSN') as HTMLSelectElement).value,
+      ibsPreencher: (document.querySelector('input[name="PreencherInfoIBSCBS"][value="1"]') as HTMLInputElement).checked,
+      compraGovNao: (document.querySelector('input[name="EhCompraGovernamental"][value="0"]') as HTMLInputElement).checked,
+      destinatarioSim: (document.querySelector('input[name="DestinatarioEhOAdquirente"][value="1"]') as HTMLInputElement)
+        .checked,
+      tomadorBrasil: (document.querySelector('input[name="Tomador.LocalDomicilio"][value="1"]') as HTMLInputElement)
+        .checked,
+      informarEndereco: (document.getElementById('Tomador_InformarEndereco') as HTMLInputElement).checked,
     }));
     expect(valores.competencia).toBe(hojeBR());
     expect(valores.cpf).toBe('52998224725');
     expect(valores.cep).toBe('22041012');
     expect(valores.numero).toBe('101');
-    expect(valores.regime).toBe('1 - Alíquota efetiva do Simples Nacional');
+    expect(valores.regime).toBe('1');
+    expect(valores.ibsPreencher).toBe(true);
+    expect(valores.compraGovNao).toBe(true);
+    expect(valores.destinatarioSim).toBe(true);
+    expect(valores.tomadorBrasil).toBe(true);
+    expect(valores.informarEndereco).toBe(true);
   }, 30_000);
 
   it('Passo 3 da CG: regime especial, PIS/COFINS e percentuais vêm do perfil, via fallback de UI', async () => {
