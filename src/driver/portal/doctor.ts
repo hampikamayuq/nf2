@@ -47,6 +47,65 @@ export function formatarDiagnostico(d: DiagnosticoSeletor): string {
 
 export type { EntradaSeletor };
 
+export interface EstadoCampo {
+  nome: string;
+  /** O que está no DOM AGORA: value de input/select, "marcado"/"desmarcado" de radio/checkbox, "não encontrado". */
+  valor: string;
+}
+
+/**
+ * Lê de volta, campo a campo, o que ficou preenchido num passo — a prova de
+ * que o preenchimento pegou, independente do que a tela aparenta (radios e
+ * selects estilizados nem sempre repintam o widget visível). Usado pelo
+ * doctor logo após preencher, ANTES de avançar. Só roda sobre o rascunho
+ * sintético do doctor — nunca sobre dados reais de paciente.
+ */
+export async function lerEstadoPasso(page: Page, passo: NomePasso): Promise<EstadoCampo[]> {
+  const entradas = entradasDoPasso(passo);
+  const estados: EstadoCampo[] = [];
+  for (const { nome, entrada } of entradas) {
+    const valor = await page.evaluate((seletor) => {
+      let el: Element | null = null;
+      try {
+        el = document.querySelector(seletor);
+      } catch {
+        return 'não encontrado';
+      }
+      if (!el) return 'não encontrado';
+      if (el instanceof HTMLInputElement && (el.type === 'radio' || el.type === 'checkbox')) {
+        return el.checked ? 'marcado' : 'desmarcado';
+      }
+      if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || el instanceof HTMLSelectElement) {
+        return el.value === '' ? '(vazio)' : el.value.slice(0, 60);
+      }
+      return '(não é campo)';
+    }, entrada.seletor);
+    estados.push({ nome, valor });
+  }
+  return estados;
+}
+
+/** Mensagens de validação que o portal mostra quando o Avançar é recusado (padrão ASP.NET MVC + alerts). */
+export async function lerErrosValidacao(page: Page): Promise<string[]> {
+  return page.evaluate(() => {
+    const textos = new Set<string>();
+    const seletores = [
+      '.validation-summary-errors li',
+      '.field-validation-error',
+      '.text-danger',
+      '[role="alert"]',
+      '.alert-danger',
+    ];
+    for (const sel of seletores) {
+      for (const el of Array.from(document.querySelectorAll(sel))) {
+        const t = (el.textContent ?? '').trim();
+        if (t) textos.add(t.slice(0, 160));
+      }
+    }
+    return Array.from(textos);
+  });
+}
+
 export interface ElementoInventariado {
   tag: string;
   id: string;

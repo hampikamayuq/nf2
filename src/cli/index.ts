@@ -13,6 +13,8 @@ import {
   formatarDiagnostico,
   formatarElemento,
   inventariarPagina,
+  lerErrosValidacao,
+  lerEstadoPasso,
   verificarPasso,
   type DiagnosticoSeletor,
 } from '../driver/portal/doctor.ts';
@@ -274,20 +276,32 @@ program
       await esperarPassoCarregar(page);
 
       const etapas = [
-        { passo: 'passo1' as const, preencherEAvancar: async () => { await preencherPasso1(page, nota, empresa); await avancarPasso1(page); } },
-        { passo: 'passo2' as const, preencherEAvancar: async () => { await preencherPasso2(page, nota, empresa); await avancarPasso2(page); } },
-        { passo: 'passo3' as const, preencherEAvancar: async () => { await preencherPasso3(page, nota, empresa); await avancarPasso3(page); } },
-        { passo: 'passo4' as const, preencherEAvancar: undefined },
+        { passo: 'passo1' as const, preencher: () => preencherPasso1(page, nota, empresa), avancar: () => avancarPasso1(page) },
+        { passo: 'passo2' as const, preencher: () => preencherPasso2(page, nota, empresa), avancar: () => avancarPasso2(page) },
+        { passo: 'passo3' as const, preencher: () => preencherPasso3(page, nota, empresa), avancar: () => avancarPasso3(page) },
+        { passo: 'passo4' as const, preencher: undefined, avancar: undefined },
       ];
 
       for (const etapa of etapas) {
         const diagnosticos = await verificarPasso(page, etapa.passo);
         todos.push(...diagnosticos);
-        console.log(`${etapa.passo}:`);
+        console.log(`${etapa.passo}:  (URL: ${page.url()})`);
         for (const d of diagnosticos) console.log(formatarDiagnostico(d));
-        if (!etapa.preencherEAvancar) break;
+        if (!etapa.preencher || !etapa.avancar) break;
         try {
-          await etapa.preencherEAvancar();
+          await etapa.preencher();
+          // Prova do preenchimento: lê de volta o que ficou no DOM — a tela
+          // pode não repintar radios/selects estilizados, mas isto não mente.
+          console.log(`  — depois de preencher o ${etapa.passo}:`);
+          for (const campo of await lerEstadoPasso(page, etapa.passo)) {
+            console.log(`      ${campo.nome} = ${campo.valor}`);
+          }
+          await etapa.avancar();
+          const errosValidacao = await lerErrosValidacao(page);
+          if (errosValidacao.length > 0) {
+            console.log(`  — o portal mostrou validação após o Avançar:`);
+            for (const e of errosValidacao) console.log(`      · ${e}`);
+          }
         } catch (err) {
           interrompidoEm = etapa.passo;
           console.log('');
