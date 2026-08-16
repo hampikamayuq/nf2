@@ -1,0 +1,40 @@
+<!doctype html>
+<!-- Fixture sintética do Passo 3 (Valores) — o passo que difere entre as
+     duas empresas. Ids espelham src/driver/portal/seletores.ts. -->
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <title>Passo 3 — Valores (fixture)</title>
+    <style>
+      li { cursor: pointer; }
+      .dropdown-filtravel { border: 1px solid #999; padding: 4px; display: inline-block; min-width: 220px; }
+    </style>
+  </head>
+  <body>
+    <h1>Emissão de NFS-e — Passo 3: Valores</h1>
+    <form>
+      <p><label>Valor do serviço <input id="Valores_ValorServico" /></label></p>
+      <p>
+        Regime Especial de Tributação (ISSQN)
+        <span id="Valores_IssqnRegimeEspecial" class="dropdown-filtravel" data-opcoes="6 - Sociedade de profissionais|4 - Cooperativa"></span>
+      </p>
+      <p>
+        PIS/COFINS — Situação tributária
+        <span id="Valores_PisCofins_SituacaoTributaria" class="dropdown-filtravel" data-opcoes="7 - Isenta da contribuição|1 - Alíquota básica"></span>
+      </p>
+      <p>
+        PIS/COFINS — Tipo de retenção
+        <span id="Valores_PisCofins_TipoRetencao" class="dropdown-filtravel" data-opcoes="0 - Não retidos|1 - Retidos"></span>
+      </p>
+      <p>
+        Valor aproximado dos tributos
+        <span id="Valores_TipoValorTributos" class="dropdown-filtravel" data-opcoes="4 - Alíquota do Simples Nacional|2 - Configurar percentuais|3 - Valor monetário"></span>
+      </p>
+      <p><label>Percentual federal <input id="Valores_PercentualFederal" /></label></p>
+      <p><label>Percentual estadual <input id="Valores_PercentualEstadual" /></label></p>
+      <p><label>Percentual municipal <input id="Valores_PercentualMunicipal" /></label></p>
+    </form>
+    <button id="btnAvancarPasso3" onclick="location.href='passo4.html'">Avançar</button>
+    <script src="widgets.js"></script>
+  </body>
+</html>

@@ -1,13 +1,58 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
-import { montarNota } from '../core/nota.ts';
-import { PORTAL_BASE, abrirComStorageState, comoPaginaMinima, conectarPorCdp, exportarSessao, verificarLogin } from '../driver/sessao.ts';
+import { mkdirSync } from 'node:fs';
+import { dirname } from 'node:path';
+import { createInterface } from 'node:readline/promises';
+import { catalogoDaEmpresa } from '../core/catalogo/index.ts';
+import { empresaPorSlug } from '../core/empresas/index.ts';
+import { DuplicidadeError, Ledger } from '../core/ledger/ledger.ts';
+import { montarNota, type Nota } from '../core/nota.ts';
+import type { EmissorDriver } from '../driver/emissor.ts';
+import { falhasReais, formatarDiagnostico, verificarPasso, type DiagnosticoSeletor } from '../driver/portal/doctor.ts';
+import { PortalDriver } from '../driver/portal/driver.ts';
+import { hojeBR, somenteDigitos } from '../driver/portal/formatos.ts';
+import { esperarPassoCarregar } from '../driver/portal/pagina.ts';
+import { avancarPasso1, preencherPasso1 } from '../driver/portal/passo1.ts';
+import { avancarPasso2, preencherPasso2 } from '../driver/portal/passo2.ts';
+import { avancarPasso3, preencherPasso3 } from '../driver/portal/passo3.ts';
+import { VERSAO_MAPA } from '../driver/portal/seletores.ts';
+import {
+  PORTAL_BASE,
+  abrirComStorageState,
+  comoPaginaMinima,
+  conectarPorCdp,
+  exportarSessao,
+  garantirSessaoAtiva,
+  verificarLogin,
+  type SessaoNavegador,
+} from '../driver/sessao.ts';
 import { lerPlanilha } from './planilha.ts';
 
 const CDP_URL_PADRAO = 'http://localhost:9222';
+const LEDGER_PADRAO = 'data/ledger.db';
 
 function dormir(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+interface OpcoesSessao {
+  cdpUrl: string;
+  storageState?: string;
+}
+
+/** Abre a sessão (CDP por padrão; storage-state no modo container) já posicionada no portal e com login conferido. */
+async function abrirSessaoLogada(opts: OpcoesSessao): Promise<SessaoNavegador> {
+  const sessao = opts.storageState ? await abrirComStorageState(opts.storageState) : await conectarPorCdp(opts.cdpUrl);
+  if (opts.storageState) {
+    await sessao.page.goto(PORTAL_BASE, { waitUntil: 'domcontentloaded' });
+  }
+  try {
+    await garantirSessaoAtiva(comoPaginaMinima(sessao.page));
+  } catch (err) {
+    await sessao.encerrar();
+    throw err;
+  }
+  return sessao;
 }
 
 const program = new Command();
@@ -101,6 +146,222 @@ program
     console.log(`${linhas.length - comErro}/${linhas.length} linhas válidas.`);
     if (comErro > 0) {
       process.exitCode = 1;
+    }
+  });
+
+program
+  .command('doctor')
+  .description('Percorre os 4 passos do wizard num rascunho descartável e confere se cada seletor ainda resolve. Nunca emite.')
+  .option('--empresa <slug>', 'Perfil usado para preencher o rascunho de teste (qara | cg)', 'qara')
+  .option('--cdp-url <url>', 'Chrome já aberto com --remote-debugging-port', CDP_URL_PADRAO)
+  .option('--storage-state <arquivo>', 'Em vez de CDP, usa uma sessão exportada (modo container)')
+  .action(async (opts: { empresa: string; cdpUrl: string; storageState?: string }) => {
+    const empresa = empresaPorSlug(opts.empresa);
+    // Rascunho 100% sintético: tomador "não informado", primeiro serviço do
+    // catálogo, atendimento hoje. Nenhum dado de paciente entra aqui.
+    const item = catalogoDaEmpresa(opts.empresa)[0];
+    if (!item) {
+      throw new Error(`Catálogo da empresa "${opts.empresa}" está vazio.`);
+    }
+    const resultado = montarNota(
+      { empresa: opts.empresa, dataAtendimento: hojeBR(), tipoTomador: 'nao-informado', codigoServico: item.codigo },
+      0
+    );
+    if (!resultado.ok) {
+      throw new Error(`Nota sintética do doctor inválida: ${resultado.erros.join('; ')}`);
+    }
+    const nota = resultado.nota;
+
+    console.log(`nf doctor — mapa de seletores versão ${VERSAO_MAPA}, empresa ${empresa.slug}`);
+    console.log('Abre um rascunho de teste, passo a passo, e NUNCA clica em "Emitir NFS-e".');
+    console.log('');
+
+    const sessao = await abrirSessaoLogada(opts);
+    const todos: DiagnosticoSeletor[] = [];
+    let interrompidoEm: string | undefined;
+    try {
+      const { page } = sessao;
+      await page.goto(`${PORTAL_BASE}/DPS/Pessoas`, { waitUntil: 'domcontentloaded' });
+      await esperarPassoCarregar(page);
+
+      const etapas = [
+        { passo: 'passo1' as const, preencherEAvancar: async () => { await preencherPasso1(page, nota, empresa); await avancarPasso1(page); } },
+        { passo: 'passo2' as const, preencherEAvancar: async () => { await preencherPasso2(page, nota, empresa); await avancarPasso2(page); } },
+        { passo: 'passo3' as const, preencherEAvancar: async () => { await preencherPasso3(page, nota, empresa); await avancarPasso3(page); } },
+        { passo: 'passo4' as const, preencherEAvancar: undefined },
+      ];
+
+      for (const etapa of etapas) {
+        const diagnosticos = await verificarPasso(page, etapa.passo);
+        todos.push(...diagnosticos);
+        console.log(`${etapa.passo}:`);
+        for (const d of diagnosticos) console.log(formatarDiagnostico(d));
+        if (!etapa.preencherEAvancar) break;
+        try {
+          await etapa.preencherEAvancar();
+        } catch (err) {
+          interrompidoEm = etapa.passo;
+          console.log('');
+          console.log(`Não consegui preencher/avançar o ${etapa.passo}: ${err instanceof Error ? err.message : String(err)}`);
+          console.log('Os passos seguintes ficaram sem verificação nesta rodada.');
+          break;
+        }
+      }
+    } finally {
+      // Abandona o rascunho voltando para o painel — nada foi emitido.
+      await sessao.page.goto(PORTAL_BASE, { waitUntil: 'domcontentloaded' }).catch(() => {});
+      await sessao.encerrar();
+    }
+
+    const quebrados = falhasReais(todos);
+    console.log('');
+    if (quebrados.length === 0 && !interrompidoEm) {
+      console.log('Todos os seletores obrigatórios resolveram. Pode rodar o lote.');
+    } else {
+      if (quebrados.length > 0) {
+        console.log(`${quebrados.length} seletor(es) obrigatório(s) quebrado(s) — corrija src/driver/portal/seletores.ts antes de emitir:`);
+        for (const d of quebrados) console.log(`  - ${d.passo}.${d.nome}: ${d.seletor} (${d.descricao})`);
+      }
+      process.exitCode = 1;
+    }
+  });
+
+program
+  .command('emitir')
+  .description('Preenche o wizard para cada nota da planilha. Padrão: dry-run (para no resumo do Passo 4). Só emite com --confirm + "sim".')
+  .requiredOption('--planilha <arquivo>', 'Caminho do XLSX ou CSV')
+  .option('--linha <numero>', 'Só a linha N da planilha (o mesmo número que aparece no Excel)')
+  .option('--confirm', 'Habilita emissão de verdade (ainda pede "sim" nota a nota, diante do resumo)', false)
+  .option('--cdp-url <url>', 'Chrome já aberto com --remote-debugging-port', CDP_URL_PADRAO)
+  .option('--storage-state <arquivo>', 'Em vez de CDP, usa uma sessão exportada (modo container)')
+  .option('--ledger <arquivo>', 'Banco do ledger', LEDGER_PADRAO)
+  .action(async (opts: { planilha: string; linha?: string; confirm: boolean; cdpUrl: string; storageState?: string; ledger: string }) => {
+    const linhas = await lerPlanilha(opts.planilha);
+    const selecionadas = opts.linha ? linhas.filter((l) => l.numeroLinha === Number(opts.linha)) : linhas;
+    if (selecionadas.length === 0) {
+      console.error(opts.linha ? `Linha ${opts.linha} não existe na planilha.` : 'Planilha sem linhas de dados.');
+      process.exitCode = 1;
+      return;
+    }
+
+    // Valida TUDO antes de abrir o navegador — nada de descobrir erro na nota 7.
+    const notas: Array<{ numeroLinha: number; nota: Nota }> = [];
+    let comErro = 0;
+    for (const { numeroLinha, dados } of selecionadas) {
+      const resultado = montarNota(dados, numeroLinha);
+      if (resultado.ok) {
+        notas.push({ numeroLinha, nota: resultado.nota });
+      } else {
+        comErro++;
+        console.log(`linha ${numeroLinha}: ERRO`);
+        for (const erro of resultado.erros) console.log(`  - ${erro}`);
+      }
+    }
+    if (comErro > 0) {
+      console.error(`\n${comErro} linha(s) inválida(s). Corrija a planilha — nenhum navegador foi aberto.`);
+      process.exitCode = 1;
+      return;
+    }
+
+    const sessao = await abrirSessaoLogada(opts);
+    try {
+      // A sessão logada é de UM CNPJ; recusa notas de outra empresa antes de preencher qualquer coisa.
+      const login = await verificarLogin(comoPaginaMinima(sessao.page));
+      if (login.cnpj) {
+        const cnpjSessao = somenteDigitos(login.cnpj);
+        const foraDaSessao = notas.filter(({ nota }) => empresaPorSlug(nota.empresa).cnpj !== cnpjSessao);
+        if (foraDaSessao.length > 0) {
+          const linhasErradas = foraDaSessao.map((n) => n.numeroLinha).join(', ');
+          console.error(
+            `A sessão logada é do CNPJ ${login.cnpj}, mas a(s) linha(s) ${linhasErradas} são de outra empresa. ` +
+              'Emita essas notas com a sessão da empresa certa.'
+          );
+          process.exitCode = 1;
+          return;
+        }
+      } else {
+        console.log('Aviso: não consegui ler o CNPJ da sessão na tela — confira se está logado na empresa certa.');
+      }
+
+      const driver: EmissorDriver = new PortalDriver(sessao.page);
+
+      if (!opts.confirm) {
+        for (const { numeroLinha, nota } of notas) {
+          console.log(`\n=== linha ${numeroLinha} — dry-run (nada será emitido) ===`);
+          const resumo = await driver.prepararNota(nota);
+          console.log(resumo.textoCompleto);
+          await driver.abandonar();
+        }
+        console.log('\nDry-run concluído: nenhuma nota foi emitida. Rode com --confirm para emitir.');
+        return;
+      }
+
+      mkdirSync(dirname(opts.ledger), { recursive: true });
+      const ledger = new Ledger(opts.ledger);
+      const rl = createInterface({ input: process.stdin, output: process.stdout });
+      try {
+        for (const { numeroLinha, nota } of notas) {
+          console.log(`\n=== linha ${numeroLinha} ===`);
+          let registroId: number;
+          try {
+            registroId = ledger.inserirPendente(nota).id;
+          } catch (err) {
+            if (err instanceof DuplicidadeError) {
+              console.log(`Pulada: ${err.message}`);
+              continue;
+            }
+            throw err;
+          }
+
+          let resumo;
+          try {
+            resumo = await driver.prepararNota(nota);
+          } catch (err) {
+            // Falha ANTES do clique: nada foi emitido — registra como failed
+            // (libera a chave natural) e segue para a próxima nota.
+            ledger.marcarEmProgresso(registroId);
+            ledger.marcarFalha(registroId, err instanceof Error ? err.message : String(err));
+            await driver.abandonar().catch(() => {});
+            console.error(`Falha ao preencher (nada foi emitido): ${err instanceof Error ? err.message : String(err)}`);
+            process.exitCode = 1;
+            continue;
+          }
+          console.log(resumo.textoCompleto);
+          console.log('');
+          const resposta = (await rl.question('Emitir esta nota? (digite "sim" para emitir) ')).trim().toLowerCase();
+          if (resposta !== 'sim') {
+            // Recusa vira `failed` (não `pending`): libera a chave natural para uma nova tentativa futura.
+            ledger.marcarEmProgresso(registroId);
+            ledger.marcarFalha(registroId, 'Recusada na confirmação — nada foi emitido.');
+            await driver.abandonar();
+            console.log('Ok, não emiti. Rascunho abandonado.');
+            continue;
+          }
+
+          // A intenção vira in_progress ANTES do clique irreversível: se o
+          // processo morrer no meio, sobra rastro para conciliar, nunca silêncio.
+          ledger.marcarEmProgresso(registroId);
+          try {
+            const emitida = await driver.emitir();
+            ledger.marcarEmitida(registroId, emitida.chaveAcesso, emitida.numeroNota);
+            console.log(`Emitida — número ${emitida.numeroNota}, chave ${emitida.chaveAcesso}`);
+          } catch (err) {
+            // Depois do clique o estado é DESCONHECIDO: fica in_progress de
+            // propósito, para `nf conciliar` (Fase 6) resolver contra o portal.
+            console.error(
+              `Falha após o clique de emissão (registro ${registroId} segue in_progress no ledger): ` +
+                (err instanceof Error ? err.message : String(err))
+            );
+            process.exitCode = 1;
+            return;
+          }
+        }
+      } finally {
+        rl.close();
+        ledger.close();
+      }
+    } finally {
+      await sessao.encerrar();
     }
   });
 

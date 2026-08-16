@@ -1,0 +1,68 @@
+<!doctype html>
+<!-- Fixture sintética do Passo 2 (Serviço), incluindo o bloco IBS/CBS da
+     Reforma Tributária. Ids espelham src/driver/portal/seletores.ts. -->
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <title>Passo 2 — Serviço (fixture)</title>
+    <style>
+      li { cursor: pointer; }
+      .dropdown-filtravel { border: 1px solid #999; padding: 4px; display: inline-block; min-width: 220px; }
+    </style>
+  </head>
+  <body>
+    <h1>Emissão de NFS-e — Passo 2: Serviço</h1>
+    <form>
+      <p>
+        Município de prestação
+        <span id="LocalPrestacao_Municipio" class="dropdown-filtravel" data-opcoes="Rio de Janeiro/RJ|São Paulo/SP|Niterói/RJ"></span>
+      </p>
+      <p>
+        Código de Tributação Nacional
+        <span id="Servico_CodigoTributacaoNacional" class="dropdown-filtravel" data-opcoes="04.01.01 - Medicina e biomedicina|01.01.01 - Análise e desenvolvimento de sistemas"></span>
+      </p>
+      <p>
+        Código de Tributação Complementar
+        <span id="Servico_CodigoTributacaoComplementar" class="dropdown-filtravel" data-opcoes="04.01.01.001 - Medicina e biomedicina|04.01.01.002 - Outra atividade"></span>
+      </p>
+      <p><label>Descrição do serviço <textarea id="Servico_Descricao"></textarea></label></p>
+
+      <fieldset>
+        <legend>IBS/CBS (Reforma Tributária)</legend>
+        <p>
+          Deseja preencher?
+          <label><input type="radio" name="ibsPreencher" id="IbsCbs_Preencher_Sim" /> Sim</label>
+          <label><input type="radio" name="ibsPreencher" id="IbsCbs_Preencher_Nao" /> Não</label>
+        </p>
+        <p>
+          Compra governamental?
+          <label><input type="radio" name="ibsCompraGov" id="IbsCbs_CompraGovernamental_Sim" /> Sim</label>
+          <label><input type="radio" name="ibsCompraGov" id="IbsCbs_CompraGovernamental_Nao" /> Não</label>
+        </p>
+        <p>
+          Destinatário é o próprio adquirente?
+          <label><input type="radio" name="ibsDestinatario" id="IbsCbs_DestinatarioAdquirente_Sim" /> Sim</label>
+          <label><input type="radio" name="ibsDestinatario" id="IbsCbs_DestinatarioAdquirente_Nao" /> Não</label>
+        </p>
+        <p>
+          Item NBS
+          <span id="IbsCbs_ItemNbs" class="dropdown-filtravel" data-opcoes="123012100 - Serviços de clínica médica|123012200 - Outro serviço de saúde"></span>
+        </p>
+        <p>
+          Código indicador da operação
+          <span id="IbsCbs_CodigoIndicadorOperacao" class="dropdown-filtravel" data-opcoes="030101 - Prestação de serviços de saúde|030102 - Outra operação"></span>
+        </p>
+        <p>
+          Código de Situação Tributária
+          <span id="IbsCbs_CodigoSituacaoTributaria" class="dropdown-filtravel" data-opcoes="000 - Tributação integral|200 - Alíquota reduzida"></span>
+        </p>
+        <p>
+          Classificação tributária
+          <span id="IbsCbs_CodigoClassificacaoTributaria" class="dropdown-filtravel" data-opcoes="000001 - Situação tributária padrão|000002 - Outra classificação"></span>
+        </p>
+      </fieldset>
+    </form>
+    <button id="btnAvancarPasso2" onclick="location.href='passo3.html'">Avançar</button>
+    <script src="widgets.js"></script>
+  </body>
+</html>

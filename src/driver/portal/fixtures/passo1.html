@@ -1,0 +1,39 @@
+<!doctype html>
+<!-- Fixture sintética do Passo 1 (Pessoas). Sem dado de paciente.
+     Os ids espelham src/driver/portal/seletores.ts — se o mapa mudar,
+     o teste de fixtures quebra e obriga a manter os dois em sincronia. -->
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <title>Passo 1 — Pessoas (fixture)</title>
+    <style>
+      li { cursor: pointer; }
+      .dropdown-filtravel { border: 1px solid #999; padding: 4px; display: inline-block; min-width: 220px; }
+    </style>
+  </head>
+  <body>
+    <h1>Emissão de NFS-e — Passo 1: Pessoas</h1>
+    <form>
+      <p><label>Data de Competência <input id="DataCompetencia" /></label></p>
+      <p>
+        Regime de Apuração dos Tributos no Simples Nacional
+        <span id="RegimeApuracaoSN" class="dropdown-filtravel" data-opcoes="1 - Alíquota efetiva do Simples Nacional|2 - Valor fixo"></span>
+      </p>
+      <p><label>CPF do tomador <input id="Tomador_Inscricao" /></label></p>
+      <p>
+        Casos especiais — sem CPF
+        <span id="TomadorCasoEspecial" class="dropdown-filtravel" data-opcoes="Estrangeiro residente|Turista|Não informado"></span>
+      </p>
+      <p><label>Nome <input id="Tomador_Nome" /></label></p>
+      <p><label>NIF <input id="Tomador_Nif" /></label></p>
+      <p>
+        País
+        <span id="Tomador_Pais" class="dropdown-filtravel" data-opcoes="Argentina|Portugal|Uruguai"></span>
+      </p>
+      <p><label>CEP <input id="Tomador_Endereco_Cep" /></label></p>
+      <p><label>Número <input id="Tomador_Endereco_Numero" /></label></p>
+    </form>
+    <button id="btnAvancarPasso1" onclick="location.href='passo2.html'">Avançar</button>
+    <script src="widgets.js"></script>
+  </body>
+</html>
