@@ -11,6 +11,22 @@ estruturados a partir das skills, esperando esta calibração. Não é defeito,
 Pré-requisito: o Chrome de setup aberto e logado (passos 1–3 de
 `docs/FASE1-SETUP.md`).
 
+## 0. (Opcional) Ensaie o fluxo antes, sem portal
+
+`--ensaio` roda os comandos reais contra fixtures locais (HTML sintético
+dos 4 passos) — sem sessão, sem gov.br, ledger separado
+(`data/ledger-ensaio.db`). Serve para conhecer o fluxo inteiro sem risco:
+
+```
+npm run nf -- doctor --ensaio
+npm run nf -- emitir --planilha examples/planilha-exemplo.xlsx --linha 2 --ensaio
+npm run nf -- emitir --planilha examples/planilha-exemplo.xlsx --linha 2 --ensaio --confirm
+```
+
+O terceiro comando mostra o resumo, pede o "sim", grava chave/número de
+mentira no ledger de ensaio e recusa duplicata se repetido. É exatamente o
+mesmo código que roda contra o portal — só o destino muda.
+
 ## 1. Rode o doctor
 
 ```

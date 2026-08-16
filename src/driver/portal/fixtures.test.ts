@@ -1,11 +1,10 @@
-import { join } from 'node:path';
-import { fileURLToPath, pathToFileURL } from 'node:url';
 import { chromium, type Browser, type Page } from 'playwright';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { empresaPorSlug } from '../../core/empresas/index.ts';
 import { montarNota, type LinhaPlanilha, type Nota } from '../../core/nota.ts';
 import { falhasReais, verificarPasso } from './doctor.ts';
 import { PortalDriver } from './driver.ts';
+import { urlFixture } from './fixtures.ts';
 import { hojeBR } from './formatos.ts';
 import { preencherPasso1 } from './passo1.ts';
 import { preencherPasso3 } from './passo3.ts';
@@ -15,9 +14,6 @@ import { preencherPasso3 } from './passo3.ts';
 //   RUN_BROWSER_TESTS=1 PLAYWRIGHT_CHROMIUM_PATH=/opt/pw-browsers/chromium-1194/chrome-linux/chrome npm run test:browser
 const RODAR_TESTES_DE_NAVEGADOR = process.env.RUN_BROWSER_TESTS === '1';
 const executablePath = process.env.PLAYWRIGHT_CHROMIUM_PATH;
-
-const dirFixtures = join(fileURLToPath(new URL('.', import.meta.url)), 'fixtures');
-const urlFixture = (nome: string) => pathToFileURL(join(dirFixtures, nome)).href;
 
 /** CPF de teste válido pelo dígito verificador — não é de paciente. */
 const CPF_TESTE = '529.982.247-25';

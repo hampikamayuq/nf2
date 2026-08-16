@@ -16,9 +16,11 @@ import { avancarPasso1, preencherPasso1 } from '../driver/portal/passo1.ts';
 import { avancarPasso2, preencherPasso2 } from '../driver/portal/passo2.ts';
 import { avancarPasso3, preencherPasso3 } from '../driver/portal/passo3.ts';
 import { VERSAO_MAPA } from '../driver/portal/seletores.ts';
+import { urlFixture } from '../driver/portal/fixtures.ts';
 import {
   PORTAL_BASE,
   abrirComStorageState,
+  abrirNavegadorEnsaio,
   comoPaginaMinima,
   conectarPorCdp,
   exportarSessao,
@@ -30,9 +32,62 @@ import { lerPlanilha } from './planilha.ts';
 
 const CDP_URL_PADRAO = 'http://localhost:9222';
 const LEDGER_PADRAO = 'data/ledger.db';
+const LEDGER_ENSAIO = 'data/ledger-ensaio.db';
+
+const AVISO_ENSAIO =
+  'MODO ENSAIO — rodando contra as fixtures locais (HTML sintético dos 4 passos). Nada toca o portal.';
 
 function dormir(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Confirmação por stdin que funciona tanto no terminal quanto com entrada
+ * canalizada (`printf 'sim' | nf emitir ...`): linhas que chegam antes da
+ * pergunta ficam na fila em vez de se perder, e stdin fechado vira resposta
+ * vazia — ou seja, recusa. Na dúvida, nunca emite.
+ */
+function criarConfirmador() {
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  const fila: string[] = [];
+  let pendente: ((linha: string) => void) | null = null;
+  let fechado = false;
+
+  rl.on('line', (linha) => {
+    if (pendente) {
+      const resolver = pendente;
+      pendente = null;
+      resolver(linha);
+    } else {
+      fila.push(linha);
+    }
+  });
+  rl.on('close', () => {
+    fechado = true;
+    if (pendente) {
+      const resolver = pendente;
+      pendente = null;
+      resolver('');
+    }
+  });
+
+  return {
+    perguntar(prompt: string): Promise<string> {
+      const antecipada = fila.shift();
+      if (antecipada !== undefined) {
+        console.log(`${prompt}${antecipada}`);
+        return Promise.resolve(antecipada);
+      }
+      if (fechado) return Promise.resolve('');
+      process.stdout.write(prompt);
+      return new Promise((resolve) => {
+        pendente = resolve;
+      });
+    },
+    fechar(): void {
+      rl.close();
+    },
+  };
 }
 
 interface OpcoesSessao {
@@ -155,7 +210,8 @@ program
   .option('--empresa <slug>', 'Perfil usado para preencher o rascunho de teste (qara | cg)', 'qara')
   .option('--cdp-url <url>', 'Chrome já aberto com --remote-debugging-port', CDP_URL_PADRAO)
   .option('--storage-state <arquivo>', 'Em vez de CDP, usa uma sessão exportada (modo container)')
-  .action(async (opts: { empresa: string; cdpUrl: string; storageState?: string }) => {
+  .option('--ensaio', 'Roda contra as fixtures locais, sem sessão e sem portal (teste do fluxo)', false)
+  .action(async (opts: { empresa: string; cdpUrl: string; storageState?: string; ensaio: boolean }) => {
     const empresa = empresaPorSlug(opts.empresa);
     // Rascunho 100% sintético: tomador "não informado", primeiro serviço do
     // catálogo, atendimento hoje. Nenhum dado de paciente entra aqui.
@@ -174,14 +230,17 @@ program
 
     console.log(`nf doctor — mapa de seletores versão ${VERSAO_MAPA}, empresa ${empresa.slug}`);
     console.log('Abre um rascunho de teste, passo a passo, e NUNCA clica em "Emitir NFS-e".');
+    if (opts.ensaio) console.log(AVISO_ENSAIO);
     console.log('');
 
-    const sessao = await abrirSessaoLogada(opts);
+    const sessao = opts.ensaio ? await abrirNavegadorEnsaio() : await abrirSessaoLogada(opts);
+    const urlInicio = opts.ensaio ? urlFixture('passo1.html') : `${PORTAL_BASE}/DPS/Pessoas`;
+    const urlSaida = opts.ensaio ? 'about:blank' : PORTAL_BASE;
     const todos: DiagnosticoSeletor[] = [];
     let interrompidoEm: string | undefined;
     try {
       const { page } = sessao;
-      await page.goto(`${PORTAL_BASE}/DPS/Pessoas`, { waitUntil: 'domcontentloaded' });
+      await page.goto(urlInicio, { waitUntil: 'domcontentloaded' });
       await esperarPassoCarregar(page);
 
       const etapas = [
@@ -209,7 +268,7 @@ program
       }
     } finally {
       // Abandona o rascunho voltando para o painel — nada foi emitido.
-      await sessao.page.goto(PORTAL_BASE, { waitUntil: 'domcontentloaded' }).catch(() => {});
+      await sessao.page.goto(urlSaida, { waitUntil: 'domcontentloaded' }).catch(() => {});
       await sessao.encerrar();
     }
 
@@ -235,7 +294,8 @@ program
   .option('--cdp-url <url>', 'Chrome já aberto com --remote-debugging-port', CDP_URL_PADRAO)
   .option('--storage-state <arquivo>', 'Em vez de CDP, usa uma sessão exportada (modo container)')
   .option('--ledger <arquivo>', 'Banco do ledger', LEDGER_PADRAO)
-  .action(async (opts: { planilha: string; linha?: string; confirm: boolean; cdpUrl: string; storageState?: string; ledger: string }) => {
+  .option('--ensaio', 'Roda contra as fixtures locais, sem sessão e sem portal (teste do fluxo; ledger separado)', false)
+  .action(async (opts: { planilha: string; linha?: string; confirm: boolean; cdpUrl: string; storageState?: string; ledger: string; ensaio: boolean }) => {
     const linhas = await lerPlanilha(opts.planilha);
     const selecionadas = opts.linha ? linhas.filter((l) => l.numeroLinha === Number(opts.linha)) : linhas;
     if (selecionadas.length === 0) {
@@ -263,27 +323,32 @@ program
       return;
     }
 
-    const sessao = await abrirSessaoLogada(opts);
+    if (opts.ensaio) console.log(AVISO_ENSAIO);
+    const sessao = opts.ensaio ? await abrirNavegadorEnsaio() : await abrirSessaoLogada(opts);
     try {
-      // A sessão logada é de UM CNPJ; recusa notas de outra empresa antes de preencher qualquer coisa.
-      const login = await verificarLogin(comoPaginaMinima(sessao.page));
-      if (login.cnpj) {
-        const cnpjSessao = somenteDigitos(login.cnpj);
-        const foraDaSessao = notas.filter(({ nota }) => empresaPorSlug(nota.empresa).cnpj !== cnpjSessao);
-        if (foraDaSessao.length > 0) {
-          const linhasErradas = foraDaSessao.map((n) => n.numeroLinha).join(', ');
-          console.error(
-            `A sessão logada é do CNPJ ${login.cnpj}, mas a(s) linha(s) ${linhasErradas} são de outra empresa. ` +
-              'Emita essas notas com a sessão da empresa certa.'
-          );
-          process.exitCode = 1;
-          return;
+      if (!opts.ensaio) {
+        // A sessão logada é de UM CNPJ; recusa notas de outra empresa antes de preencher qualquer coisa.
+        const login = await verificarLogin(comoPaginaMinima(sessao.page));
+        if (login.cnpj) {
+          const cnpjSessao = somenteDigitos(login.cnpj);
+          const foraDaSessao = notas.filter(({ nota }) => empresaPorSlug(nota.empresa).cnpj !== cnpjSessao);
+          if (foraDaSessao.length > 0) {
+            const linhasErradas = foraDaSessao.map((n) => n.numeroLinha).join(', ');
+            console.error(
+              `A sessão logada é do CNPJ ${login.cnpj}, mas a(s) linha(s) ${linhasErradas} são de outra empresa. ` +
+                'Emita essas notas com a sessão da empresa certa.'
+            );
+            process.exitCode = 1;
+            return;
+          }
+        } else {
+          console.log('Aviso: não consegui ler o CNPJ da sessão na tela — confira se está logado na empresa certa.');
         }
-      } else {
-        console.log('Aviso: não consegui ler o CNPJ da sessão na tela — confira se está logado na empresa certa.');
       }
 
-      const driver: EmissorDriver = new PortalDriver(sessao.page);
+      const driver: EmissorDriver = opts.ensaio
+        ? new PortalDriver(sessao.page, { urlInicioDps: urlFixture('passo1.html'), urlAbandono: 'about:blank' })
+        : new PortalDriver(sessao.page);
 
       if (!opts.confirm) {
         for (const { numeroLinha, nota } of notas) {
@@ -296,9 +361,12 @@ program
         return;
       }
 
-      mkdirSync(dirname(opts.ledger), { recursive: true });
-      const ledger = new Ledger(opts.ledger);
-      const rl = createInterface({ input: process.stdin, output: process.stdout });
+      // No ensaio, um banco separado por padrão: chave/número de fixture nunca
+      // podem se misturar com o ledger das notas reais.
+      const caminhoLedger = opts.ensaio && opts.ledger === LEDGER_PADRAO ? LEDGER_ENSAIO : opts.ledger;
+      mkdirSync(dirname(caminhoLedger), { recursive: true });
+      const ledger = new Ledger(caminhoLedger);
+      const confirmador = criarConfirmador();
       try {
         for (const { numeroLinha, nota } of notas) {
           console.log(`\n=== linha ${numeroLinha} ===`);
@@ -328,7 +396,7 @@ program
           }
           console.log(resumo.textoCompleto);
           console.log('');
-          const resposta = (await rl.question('Emitir esta nota? (digite "sim" para emitir) ')).trim().toLowerCase();
+          const resposta = (await confirmador.perguntar('Emitir esta nota? (digite "sim" para emitir) ')).trim().toLowerCase();
           if (resposta !== 'sim') {
             // Recusa vira `failed` (não `pending`): libera a chave natural para uma nova tentativa futura.
             ledger.marcarEmProgresso(registroId);
@@ -357,7 +425,7 @@ program
           }
         }
       } finally {
-        rl.close();
+        confirmador.fechar();
         ledger.close();
       }
     } finally {

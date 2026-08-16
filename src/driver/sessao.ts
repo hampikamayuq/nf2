@@ -112,6 +112,27 @@ export async function abrirComStorageState(
   };
 }
 
+/**
+ * Modo ensaio (`--ensaio` na CLI): lança um Chromium local SEM sessão
+ * nenhuma, para rodar os comandos reais contra as fixtures locais dos
+ * passos do wizard. Nunca navega para o portal — é o jeito de testar o
+ * fluxo inteiro (doctor, dry-run, confirmação, ledger) fora da clínica.
+ */
+export async function abrirNavegadorEnsaio(opts: { executablePath?: string } = {}): Promise<SessaoNavegador> {
+  const executablePath = opts.executablePath ?? process.env.PLAYWRIGHT_CHROMIUM_PATH;
+  const browser = await chromium.launch({ headless: true, executablePath });
+  const context = await browser.newContext();
+  const page = await context.newPage();
+  return {
+    browser,
+    context,
+    page,
+    encerrar: async () => {
+      await browser.close();
+    },
+  };
+}
+
 /** Exporta cookies/local storage da sessão atual para um arquivo — a ponte entre o modo local e o modo container. */
 export async function exportarSessao(context: BrowserContext, destino: string): Promise<void> {
   await mkdir(dirname(destino), { recursive: true });
