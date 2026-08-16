@@ -8,7 +8,14 @@ import { empresaPorSlug } from '../core/empresas/index.ts';
 import { DuplicidadeError, Ledger } from '../core/ledger/ledger.ts';
 import { montarNota, type Nota } from '../core/nota.ts';
 import type { EmissorDriver } from '../driver/emissor.ts';
-import { falhasReais, formatarDiagnostico, verificarPasso, type DiagnosticoSeletor } from '../driver/portal/doctor.ts';
+import {
+  falhasReais,
+  formatarDiagnostico,
+  formatarElemento,
+  inventariarPagina,
+  verificarPasso,
+  type DiagnosticoSeletor,
+} from '../driver/portal/doctor.ts';
 import { PortalDriver } from '../driver/portal/driver.ts';
 import { hojeBR, somenteDigitos } from '../driver/portal/formatos.ts';
 import { esperarPassoCarregar } from '../driver/portal/pagina.ts';
@@ -211,7 +218,30 @@ program
   .option('--cdp-url <url>', 'Chrome já aberto com --remote-debugging-port', CDP_URL_PADRAO)
   .option('--storage-state <arquivo>', 'Em vez de CDP, usa uma sessão exportada (modo container)')
   .option('--ensaio', 'Roda contra as fixtures locais, sem sessão e sem portal (teste do fluxo)', false)
-  .action(async (opts: { empresa: string; cdpUrl: string; storageState?: string; ensaio: boolean }) => {
+  .option(
+    '--descobrir',
+    'Não verifica nem preenche: inventaria os campos da página ATUAL da aba do portal (ids, rótulos, botões, opções de dropdown — nunca valores digitados). Avance manualmente no Chrome e rode em cada passo.',
+    false
+  )
+  .action(async (opts: { empresa: string; cdpUrl: string; storageState?: string; ensaio: boolean; descobrir: boolean }) => {
+    if (opts.descobrir) {
+      const sessao = opts.ensaio ? await abrirNavegadorEnsaio() : await conectarPorCdp(opts.cdpUrl);
+      try {
+        if (opts.ensaio) {
+          await sessao.page.goto(urlFixture('passo1.html'), { waitUntil: 'domcontentloaded' });
+        }
+        console.log(`nf doctor --descobrir — inventário da página atual (nada é preenchido nem clicado)`);
+        console.log(`URL: ${sessao.page.url()}`);
+        console.log('');
+        const elementos = await inventariarPagina(sessao.page);
+        for (const e of elementos) console.log(formatarElemento(e));
+        console.log('');
+        console.log(`${elementos.length} elemento(s). Cole esta saída para calibrar src/driver/portal/seletores.ts.`);
+      } finally {
+        await sessao.encerrar();
+      }
+      return;
+    }
     const empresa = empresaPorSlug(opts.empresa);
     // Rascunho 100% sintético: tomador "não informado", primeiro serviço do
     // catálogo, atendimento hoje. Nenhum dado de paciente entra aqui.

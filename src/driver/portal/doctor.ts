@@ -46,3 +46,99 @@ export function formatarDiagnostico(d: DiagnosticoSeletor): string {
 }
 
 export type { EntradaSeletor };
+
+export interface ElementoInventariado {
+  tag: string;
+  id: string;
+  name: string;
+  type: string;
+  /** Texto visível de botões/links/radios — nunca o valor digitado em campos. */
+  texto: string;
+  rotulo: string;
+  visivel: boolean;
+  /** Primeiras opções de um <select> — ajuda a calibrar o texto digitado nos dropdowns. */
+  opcoes?: string[];
+}
+
+/**
+ * Inventaria os campos da página ATUAL (modo `nf doctor --descobrir`):
+ * ids, names, rótulos, textos de botão e opções de dropdown. Não navega,
+ * não preenche, não clica — e nunca lê valor digitado em campo (LGPD).
+ * É a ferramenta de calibração do mapa: rode em cada passo do wizard
+ * (avançando manualmente no Chrome) e compare com seletores.ts.
+ */
+export async function inventariarPagina(page: Page): Promise<ElementoInventariado[]> {
+  return page.evaluate(() => {
+    const resultado: Array<{
+      tag: string;
+      id: string;
+      name: string;
+      type: string;
+      texto: string;
+      rotulo: string;
+      visivel: boolean;
+      opcoes?: string[];
+    }> = [];
+    const els = document.querySelectorAll('input, select, textarea, button, a, [role="combobox"]');
+    for (const el of Array.from(els)) {
+      const tag = el.tagName.toLowerCase();
+      const id = el.id ?? '';
+      const name = el.getAttribute('name') ?? '';
+      const type = el.getAttribute('type') ?? '';
+
+      const ehAcao = tag === 'button' || tag === 'a' || type === 'submit' || type === 'button';
+      const ehMarcavel = type === 'radio' || type === 'checkbox';
+      let texto = '';
+      if (ehAcao) {
+        texto = (el.textContent || (el as HTMLInputElement).value || '').trim().slice(0, 60);
+      } else if (ehMarcavel) {
+        texto = (el.getAttribute('value') ?? '').slice(0, 60);
+      }
+
+      // Links sem id são quase sempre menu/navegação — só interessam os de ação do wizard.
+      if (tag === 'a' && !id && !/avan[cç]|emitir|prosseguir|continuar|voltar|salvar|concluir/i.test(texto)) {
+        continue;
+      }
+
+      let rotulo = '';
+      if (id) {
+        const label = document.querySelector(`label[for="${CSS.escape(id)}"]`);
+        rotulo = label?.textContent?.trim().slice(0, 60) ?? '';
+      }
+      if (!rotulo) {
+        rotulo = el.closest('label')?.textContent?.trim().slice(0, 60) ?? '';
+      }
+
+      if (!id && !name && !texto) continue;
+
+      const item: (typeof resultado)[number] = {
+        tag,
+        id,
+        name,
+        type,
+        texto,
+        rotulo,
+        visivel: (el as HTMLElement).offsetParent !== null,
+      };
+      if (el instanceof HTMLSelectElement) {
+        item.opcoes = Array.from(el.options)
+          .slice(0, 12)
+          .map((o) => o.label.trim().slice(0, 60));
+      }
+      resultado.push(item);
+    }
+    return resultado;
+  });
+}
+
+export function formatarElemento(e: ElementoInventariado): string {
+  const partes = [`[${e.tag}${e.type ? `:${e.type}` : ''}]`];
+  partes.push(e.id ? `#${e.id}` : '(sem id)');
+  if (e.name) partes.push(`name=${e.name}`);
+  if (e.rotulo) partes.push(`rotulo="${e.rotulo}"`);
+  if (e.texto) partes.push(`texto="${e.texto}"`);
+  if (!e.visivel) partes.push('(oculto)');
+  const linha = `  ${partes.join('  ')}`;
+  if (!e.opcoes || e.opcoes.length === 0) return linha;
+  return `${linha}\n${e.opcoes.map((o) => `      · ${o}`).join('\n')}`;
+}
