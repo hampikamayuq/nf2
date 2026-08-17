@@ -197,62 +197,52 @@ export const SELETORES: Record<NomePasso, Record<string, EntradaSeletor>> = {
     },
   },
 
-  // Passo 2 — Serviço: local, códigos de tributação, descrição, IBS/CBS.
+  // Passo 2 — /DPS/Servico (inventário real de 17/08/2026): local da
+  // prestação, códigos de tributação, descrição e a parte do IBS/CBS que
+  // vive aqui (NBS + indicador da operação).
   passo2: {
     municipioPrestacao: {
-      seletor: '#LocalPrestacao_Municipio',
-      descricao: 'Município de prestação do serviço',
-      confirmado: false,
+      seletor: '#LocalPrestacao_CodigoMunicipioPrestacao',
+      descricao: 'Município de prestação do serviço (select2 com busca — opções carregam por AJAX)',
+      confirmado: true,
       fallbackUi: true,
     },
     codigoTributacaoNacional: {
-      seletor: '#Servico_CodigoTributacaoNacional',
+      seletor: '#ServicoPrestado_CodigoTributacaoNacional',
       descricao: 'Código de Tributação Nacional (04.01.01)',
-      confirmado: false,
+      confirmado: true,
       fallbackUi: true,
     },
     codigoTributacaoComplementar: {
-      seletor: '#Servico_CodigoTributacaoComplementar',
-      descricao: 'Código de Tributação Complementar (04.01.01.001)',
-      confirmado: false,
+      seletor: '#ServicoPrestado_CodigoComplementarMunicipal',
+      descricao: 'Código de Tributação Complementar municipal (04.01.01.001 — opções dependem do município)',
+      confirmado: true,
       fallbackUi: true,
     },
     descricaoServico: {
-      seletor: '#Servico_Descricao',
+      seletor: '#ServicoPrestado_Descricao',
       descricao: 'Descrição do serviço (template do catálogo, com CRM/RQE e data do atendimento)',
-      confirmado: false,
+      confirmado: true,
     },
-    // Bloco IBS/CBS restante — os radios (preencher/compra gov/destinatário)
-    // moraram no Passo 1 (inventário 16/08/2026); aqui ficam os dropdowns de
-    // NBS/indicador/CST/classificação, ainda sem id confirmado.
+    // IBS/CBS neste passo: NBS + indicador da operação. CST e classificação
+    // tributária NÃO apareceram no inventário do Passo 2 — foram para o mapa
+    // do Passo 3, aguardando o inventário daquele passo.
     ibsCbsItemNbs: {
-      seletor: '#IbsCbs_ItemNbs',
+      seletor: '#ServicoPrestado_CodigoNBS',
       descricao: 'IBS/CBS: Item NBS (123012100 — Serviços de clínica médica)',
-      confirmado: false,
+      confirmado: true,
       fallbackUi: true,
     },
     ibsCbsCodigoIndicadorOperacao: {
-      seletor: '#IbsCbs_CodigoIndicadorOperacao',
-      descricao: 'IBS/CBS: código indicador da operação (030101)',
-      confirmado: false,
-      fallbackUi: true,
-    },
-    ibsCbsSituacaoTributaria: {
-      seletor: '#IbsCbs_CodigoSituacaoTributaria',
-      descricao: 'IBS/CBS: CST (000 — tributação integral)',
-      confirmado: false,
-      fallbackUi: true,
-    },
-    ibsCbsClassificacaoTributaria: {
-      seletor: '#IbsCbs_CodigoClassificacaoTributaria',
-      descricao: 'IBS/CBS: classificação tributária (000001)',
-      confirmado: false,
+      seletor: '#ServicoPrestado_CodigoIndOp',
+      descricao: 'IBS/CBS: código indicador da operação (030101 — opções carregam após o NBS)',
+      confirmado: true,
       fallbackUi: true,
     },
     avancar: {
-      seletor: '#btnAvancar',
-      descricao: 'Botão Avançar (mesmo id do Passo 1; a confirmar neste passo)',
-      confirmado: false,
+      seletor: 'button[type="submit"]',
+      descricao: 'Botão Avançar do Passo 2 (submit SEM id — clicado por tipo/texto)',
+      confirmado: true,
       texto: 'Avançar',
     },
   },
@@ -307,9 +297,24 @@ export const SELETORES: Record<NomePasso, Record<string, EntradaSeletor>> = {
       fallbackUi: true,
       opcional: true,
     },
+    // CST e classificação tributária do IBS/CBS não apareceram no Passo 2
+    // real — a hipótese é que vivem aqui no Passo 3, junto dos valores.
+    // Ids são palpite até o inventário deste passo.
+    ibsCbsSituacaoTributaria: {
+      seletor: '#IbsCbs_CodigoSituacaoTributaria',
+      descricao: 'IBS/CBS: CST (000 — tributação integral)',
+      confirmado: false,
+      fallbackUi: true,
+    },
+    ibsCbsClassificacaoTributaria: {
+      seletor: '#IbsCbs_CodigoClassificacaoTributaria',
+      descricao: 'IBS/CBS: classificação tributária (000001)',
+      confirmado: false,
+      fallbackUi: true,
+    },
     avancar: {
-      seletor: '#btnAvancar',
-      descricao: 'Botão Avançar (mesmo id do Passo 1; a confirmar neste passo)',
+      seletor: 'button[type="submit"]',
+      descricao: 'Botão Avançar do Passo 3 (palpite: submit sem id, como no Passo 2)',
       confirmado: false,
       texto: 'Avançar',
     },

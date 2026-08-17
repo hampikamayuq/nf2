@@ -33,8 +33,16 @@
       <p><label>Percentual federal <input id="Valores_PercentualFederal" /></label></p>
       <p><label>Percentual estadual <input id="Valores_PercentualEstadual" /></label></p>
       <p><label>Percentual municipal <input id="Valores_PercentualMunicipal" /></label></p>
+      <p>
+        IBS/CBS — Código de Situação Tributária
+        <span id="IbsCbs_CodigoSituacaoTributaria" class="dropdown-filtravel" data-opcoes="000 - Tributação integral|200 - Alíquota reduzida"></span>
+      </p>
+      <p>
+        IBS/CBS — Classificação tributária
+        <span id="IbsCbs_CodigoClassificacaoTributaria" class="dropdown-filtravel" data-opcoes="000001 - Situação tributária padrão|000002 - Outra classificação"></span>
+      </p>
+      <button type="submit" onclick="event.preventDefault(); location.href='passo4.html'">Avançar</button>
     </form>
-    <button id="btnAvancar" onclick="location.href='passo4.html'">Avançar</button>
     <script src="widgets.js"></script>
   </body>
 </html>

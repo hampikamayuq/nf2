@@ -23,6 +23,14 @@ export async function preencherPasso3(page: Page, nota: Nota, empresa: Empresa):
   await selecionarDropdownFiltravel(page, s.pisCofinsTipoRetencao!, p3.pisCofinsTipoRetencao);
   await selecionarDropdownFiltravel(page, s.tipoValorTributos!, p3.tipoValorTributos);
 
+  // CST e classificação tributária do IBS/CBS não estão no Passo 2 real —
+  // a hipótese (a confirmar no inventário deste passo) é que vivem aqui.
+  const ibs = empresa.passo2.ibsCbs;
+  if (ibs.preencher) {
+    await selecionarDropdownFiltravel(page, s.ibsCbsSituacaoTributaria!, ibs.codigoSituacaoTributaria);
+    await selecionarDropdownFiltravel(page, s.ibsCbsClassificacaoTributaria!, ibs.codigoClassificacaoTributaria);
+  }
+
   if (p3.percentuais) {
     await preencherNativo(page, s.percentualFederal!, p3.percentuais.federal);
     await preencherNativo(page, s.percentualEstadual!, p3.percentuais.estadual);

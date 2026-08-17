@@ -182,14 +182,19 @@ export async function selecionarDropdownFiltravel(page: Page, entrada: EntradaSe
     [entrada.seletor, texto] as const
   );
   if (viaSelect === 'ok') return;
-  if (viaSelect === 'sem-opcao') {
-    throw new SeletorNaoEncontradoError(
-      entrada,
-      `O <select> existe mas nenhuma opção tem value nem texto correspondendo a "${texto}" — ajuste o valor no perfil da empresa.`
-    );
-  }
+  // 'sem-opcao' NÃO é erro fatal: selects com busca (select2/AJAX) começam
+  // vazios e as opções só existem depois de digitar no widget — segue para
+  // o fallback de UI, que é o caminho normal nesses casos.
 
-  await clicar(page, entrada);
+  // O select2 esconde o <select> original e desenha um span com id
+  // determinístico select2-<id>-container — é nele que se clica para abrir.
+  const idBase = entrada.seletor.startsWith('#') ? entrada.seletor.slice(1) : null;
+  const widgetSelect2 = idBase ? page.locator(`#select2-${idBase}-container`) : null;
+  if (widgetSelect2 && (await widgetSelect2.count()) > 0) {
+    await widgetSelect2.first().click({ timeout: TIMEOUT_CLIQUE_MS });
+  } else {
+    await clicar(page, entrada);
+  }
   await page.keyboard.type(texto, { delay: 30 });
 
   const opcao = page
@@ -199,9 +204,14 @@ export async function selecionarDropdownFiltravel(page: Page, entrada: EntradaSe
   try {
     await opcao.click({ timeout: TIMEOUT_OPCAO_MS });
   } catch {
+    const detalheSelect =
+      viaSelect === 'sem-opcao'
+        ? `O <select> não tem opção com value/texto "${texto}" e `
+        : '';
     throw new SeletorNaoEncontradoError(
       entrada,
-      `Abriu o controle e digitou "${texto}", mas nenhuma opção com esse texto apareceu para clicar.`
+      `${detalheSelect}abriu o controle e digitou "${texto}", mas nenhuma opção com esse texto apareceu para clicar. ` +
+        'Se o texto da opção no portal for outro, ajuste o valor no perfil da empresa (é dado, não código).'
     );
   }
 }

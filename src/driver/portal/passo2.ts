@@ -5,12 +5,11 @@ import { clicar, esperarPassoCarregar, preencherNativo, selecionarDropdownFiltra
 import { SELETORES } from './seletores.ts';
 
 /**
- * Passo 2 — local da prestação, códigos de tributação, descrição e IBS/CBS.
- *
- * Tudo que é dropdown aqui usa o fallback de UI por padrão (clicar, digitar,
- * clicar na opção) — é o comportamento documentado nas skills para Município
- * e códigos de tributação, e o PLANO.md manda assumir o mesmo para o bloco
- * IBS/CBS, cujos ids ainda nem foram confirmados em produção.
+ * Passo 2 — /DPS/Servico (layout real conferido no inventário de
+ * 17/08/2026): local da prestação, códigos de tributação, descrição e a
+ * parte do IBS/CBS deste passo (NBS + indicador da operação). Os dropdowns
+ * são selects atrás de select2 — o caminho nativo tenta primeiro; municípios
+ * carregam por AJAX e caem no fallback de UI.
  */
 export async function preencherPasso2(page: Page, nota: Nota, empresa: Empresa): Promise<void> {
   const s = SELETORES.passo2;
@@ -25,15 +24,12 @@ export async function preencherPasso2(page: Page, nota: Nota, empresa: Empresa):
     : nota.servico.descricao;
   await preencherNativo(page, s.descricaoServico!, descricao);
 
-  // Os radios de IBS/CBS (preencher/compra gov/destinatário) ficam no Passo 1
-  // (inventário 16/08/2026). Aqui restam os dropdowns do bloco — só quando o
-  // perfil pede o preenchimento.
+  // Radios de IBS/CBS ficam no Passo 1; CST e classificação, no Passo 3.
+  // Aqui: NBS + indicador da operação, só quando o perfil pede.
   const ibs = p2.ibsCbs;
   if (!ibs.preencher) return;
   await selecionarDropdownFiltravel(page, s.ibsCbsItemNbs!, ibs.itemNbs);
   await selecionarDropdownFiltravel(page, s.ibsCbsCodigoIndicadorOperacao!, ibs.codigoIndicadorOperacao);
-  await selecionarDropdownFiltravel(page, s.ibsCbsSituacaoTributaria!, ibs.codigoSituacaoTributaria);
-  await selecionarDropdownFiltravel(page, s.ibsCbsClassificacaoTributaria!, ibs.codigoClassificacaoTributaria);
 }
 
 export async function avancarPasso2(page: Page): Promise<void> {

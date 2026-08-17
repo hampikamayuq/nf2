@@ -11,7 +11,7 @@ describe('mapa de seletores', () => {
   it('todas as entradas têm seletor por id ou por name+value (radios com id duplicado no portal) e descrição', () => {
     for (const passo of PASSOS) {
       for (const { nome, entrada } of entradasDoPasso(passo)) {
-        expect(entrada.seletor, `${passo}.${nome}`).toMatch(/^(#\w|input\[name=)/);
+        expect(entrada.seletor, `${passo}.${nome}`).toMatch(/^(#\w|input\[name=|button\[type=)/);
         expect(entrada.descricao.length, `${passo}.${nome}`).toBeGreaterThan(0);
       }
     }
@@ -38,21 +38,23 @@ describe('mapa de seletores', () => {
     expect(SELETORES.passo4.emitir?.texto).toBe('Emitir NFS-e');
   });
 
-  it('os dropdowns de IBS/CBS do Passo 2 seguem não confirmados (risco #4 do PLANO — falta o inventário do passo)', () => {
+  it('CST e classificação do IBS/CBS moram no mapa do Passo 3 e seguem não confirmados (risco #4 do PLANO)', () => {
     const naoConfirmados = entradasNaoConfirmadas().map((e) => `${e.passo}.${e.nome}`);
-    for (const nome of Object.keys(SELETORES.passo2).filter((n) => n.startsWith('ibsCbs'))) {
-      expect(naoConfirmados).toContain(`passo2.${nome}`);
+    expect(Object.keys(SELETORES.passo3)).toContain('ibsCbsSituacaoTributaria');
+    expect(naoConfirmados).toContain('passo3.ibsCbsSituacaoTributaria');
+    expect(naoConfirmados).toContain('passo3.ibsCbsClassificacaoTributaria');
+  });
+
+  it('Passos 1 e 2 inteiros confirmados pelos inventários reais de 16–17/08/2026', () => {
+    for (const passo of ['passo1', 'passo2'] as const) {
+      for (const { nome, entrada } of entradasDoPasso(passo)) {
+        expect(entrada.confirmado, `${passo}.${nome}`).toBe(true);
+      }
     }
   });
 
-  it('o Passo 1 inteiro está confirmado pelo inventário real de 16/08/2026', () => {
-    for (const { nome, entrada } of entradasDoPasso('passo1')) {
-      expect(entrada.confirmado, `passo1.${nome}`).toBe(true);
-    }
-  });
-
-  it('passos 2–4 seguem aguardando inventário (nenhuma entrada confirmada ainda)', () => {
-    for (const passo of ['passo2', 'passo3', 'passo4'] as const) {
+  it('passos 3–4 seguem aguardando inventário (nenhuma entrada confirmada ainda)', () => {
+    for (const passo of ['passo3', 'passo4'] as const) {
       for (const { nome, entrada } of entradasDoPasso(passo)) {
         expect(entrada.confirmado, `${passo}.${nome}`).toBe(false);
       }

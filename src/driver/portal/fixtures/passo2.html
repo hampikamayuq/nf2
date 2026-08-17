@@ -1,53 +1,57 @@
 <!doctype html>
-<!-- Fixture sintética do Passo 2 (Serviço), incluindo o bloco IBS/CBS da
-     Reforma Tributária. Ids espelham src/driver/portal/seletores.ts. -->
+<!-- Fixture do Passo 2 (Serviço) espelhando o INVENTÁRIO REAL de 17/08/2026:
+     selects nativos (no portal ficam atrás de select2), textarea de descrição,
+     NBS + indicador da operação, e Avançar como submit SEM id. -->
 <html lang="pt-BR">
   <head>
     <meta charset="utf-8" />
     <title>Passo 2 — Serviço (fixture)</title>
-    <style>
-      li { cursor: pointer; }
-      .dropdown-filtravel { border: 1px solid #999; padding: 4px; display: inline-block; min-width: 220px; }
-    </style>
   </head>
   <body>
     <h1>Emissão de NFS-e — Passo 2: Serviço</h1>
-    <form>
+    <form onsubmit="return false">
       <p>
         Município de prestação
-        <span id="LocalPrestacao_Municipio" class="dropdown-filtravel" data-opcoes="Rio de Janeiro/RJ|São Paulo/SP|Niterói/RJ"></span>
+        <select id="LocalPrestacao_CodigoMunicipioPrestacao" name="LocalPrestacao.CodigoMunicipioPrestacao">
+          <option value="">Selecione...</option>
+          <option value="3304557">Rio de Janeiro/RJ</option>
+          <option value="3550308">São Paulo/SP</option>
+        </select>
       </p>
       <p>
         Código de Tributação Nacional
-        <span id="Servico_CodigoTributacaoNacional" class="dropdown-filtravel" data-opcoes="04.01.01 - Medicina e biomedicina|01.01.01 - Análise e desenvolvimento de sistemas"></span>
+        <select id="ServicoPrestado_CodigoTributacaoNacional" name="ServicoPrestado.CodigoTributacaoNacional">
+          <option value="">Selecione...</option>
+          <option value="040101">04.01.01 - Medicina e biomedicina</option>
+          <option value="010101">01.01.01 - Análise e desenvolvimento de sistemas</option>
+        </select>
       </p>
       <p>
-        Código de Tributação Complementar
-        <span id="Servico_CodigoTributacaoComplementar" class="dropdown-filtravel" data-opcoes="04.01.01.001 - Medicina e biomedicina|04.01.01.002 - Outra atividade"></span>
+        Código de Tributação Complementar municipal
+        <select id="ServicoPrestado_CodigoComplementarMunicipal" name="ServicoPrestado.CodigoComplementarMunicipal">
+          <option value="">Selecione...</option>
+          <option value="040101001">04.01.01.001 - Medicina e biomedicina</option>
+          <option value="040101002">04.01.01.002 - Outra atividade</option>
+        </select>
       </p>
-      <p><label>Descrição do serviço <textarea id="Servico_Descricao"></textarea></label></p>
-
-      <fieldset>
-        <legend>IBS/CBS (Reforma Tributária) — os radios Sim/Não ficam no Passo 1</legend>
-        <p>
-          Item NBS
-          <span id="IbsCbs_ItemNbs" class="dropdown-filtravel" data-opcoes="123012100 - Serviços de clínica médica|123012200 - Outro serviço de saúde"></span>
-        </p>
-        <p>
-          Código indicador da operação
-          <span id="IbsCbs_CodigoIndicadorOperacao" class="dropdown-filtravel" data-opcoes="030101 - Prestação de serviços de saúde|030102 - Outra operação"></span>
-        </p>
-        <p>
-          Código de Situação Tributária
-          <span id="IbsCbs_CodigoSituacaoTributaria" class="dropdown-filtravel" data-opcoes="000 - Tributação integral|200 - Alíquota reduzida"></span>
-        </p>
-        <p>
-          Classificação tributária
-          <span id="IbsCbs_CodigoClassificacaoTributaria" class="dropdown-filtravel" data-opcoes="000001 - Situação tributária padrão|000002 - Outra classificação"></span>
-        </p>
-      </fieldset>
+      <p><label>Descrição do serviço <textarea id="ServicoPrestado_Descricao" name="ServicoPrestado.Descricao"></textarea></label></p>
+      <p>
+        Item NBS
+        <select id="ServicoPrestado_CodigoNBS" name="ServicoPrestado.CodigoNBS">
+          <option value=""></option>
+          <option value="123012100">123012100 - Serviços de clínica médica</option>
+          <option value="123012200">123012200 - Outro serviço de saúde</option>
+        </select>
+      </p>
+      <p>
+        Código indicador da operação
+        <select id="ServicoPrestado_CodigoIndOp" name="ServicoPrestado.CodigoIndOp">
+          <option value=""></option>
+          <option value="030101">030101 - Prestação de serviços de saúde</option>
+          <option value="030102">030102 - Outra operação</option>
+        </select>
+      </p>
+      <button type="submit" onclick="location.href='passo3.html'">Avançar</button>
     </form>
-    <button id="btnAvancar" onclick="location.href='passo3.html'">Avançar</button>
-    <script src="widgets.js"></script>
   </body>
 </html>
