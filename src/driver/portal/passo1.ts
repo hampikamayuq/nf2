@@ -2,7 +2,14 @@ import type { Page } from 'playwright';
 import type { Empresa } from '../../core/empresas/index.ts';
 import type { Nota } from '../../core/nota.ts';
 import { hojeBR, somenteDigitos } from './formatos.ts';
-import { clicar, esperarPassoCarregar, marcarCheckbox, preencherNativo, selecionarDropdownFiltravel } from './pagina.ts';
+import {
+  clicar,
+  esperarPassoCarregar,
+  marcarCheckbox,
+  marcarRadio,
+  preencherNativo,
+  selecionarDropdownFiltravel,
+} from './pagina.ts';
 import { SELETORES } from './seletores.ts';
 
 /**
@@ -27,17 +34,17 @@ export async function preencherPasso1(page: Page, nota: Nota, empresa: Empresa):
   // `passo2.ibsCbs` (o dado é o mesmo — só a tela em que ele entra mudou).
   const ibs = empresa.passo2.ibsCbs;
   if (ibs.preencher) {
-    await clicar(page, s.ibsCbsPreencherSim!);
-    await clicar(page, ibs.compraGovernamental ? s.compraGovSim! : s.compraGovNao!);
-    await clicar(page, ibs.destinatarioProprioAdquirente ? s.destinatarioAdquirenteSim! : s.destinatarioAdquirenteNao!);
+    await marcarRadio(page, s.ibsCbsPreencherSim!);
+    await marcarRadio(page, ibs.compraGovernamental ? s.compraGovSim! : s.compraGovNao!);
+    await marcarRadio(page, ibs.destinatarioProprioAdquirente ? s.destinatarioAdquirenteSim! : s.destinatarioAdquirenteNao!);
   } else {
-    await clicar(page, s.ibsCbsPreencherNao!);
+    await marcarRadio(page, s.ibsCbsPreencherNao!);
   }
 
   const tomador = nota.tomador;
   switch (tomador.tipo) {
     case 'cpf':
-      await clicar(page, s.tomadorBrasil!);
+      await marcarRadio(page, s.tomadorBrasil!);
       await preencherNativo(page, s.cpfTomador!, somenteDigitos(tomador.cpf));
       // A pesquisa puxa o nome do cadastro — roundtrip com o servidor.
       await clicar(page, s.pesquisarCpf!);
@@ -50,25 +57,25 @@ export async function preencherPasso1(page: Page, nota: Nota, empresa: Empresa):
       await preencherNativo(page, s.numeroEndereco!, tomador.numero);
       break;
     case 'estrangeiro-residente':
-      await clicar(page, s.tomadorExterior!);
+      await marcarRadio(page, s.tomadorExterior!);
       if (tomador.nif) {
-        await clicar(page, s.nifInformadoSim!);
+        await marcarRadio(page, s.nifInformadoSim!);
         await preencherNativo(page, s.nifTomador!, tomador.nif);
       } else {
-        await clicar(page, s.nifInformadoNao!);
+        await marcarRadio(page, s.nifInformadoNao!);
         await selecionarDropdownFiltravel(page, s.motivoNaoInformacaoNIF!, 'Dispensado do NIF');
       }
       await preencherNativo(page, s.nomeTomador!, tomador.nome);
       break;
     case 'turista':
-      await clicar(page, s.tomadorExterior!);
-      await clicar(page, s.nifInformadoNao!);
+      await marcarRadio(page, s.tomadorExterior!);
+      await marcarRadio(page, s.nifInformadoNao!);
       await selecionarDropdownFiltravel(page, s.motivoNaoInformacaoNIF!, 'Não exigência do NIF');
       await preencherNativo(page, s.nomeTomador!, tomador.nome);
       await selecionarDropdownFiltravel(page, s.paisTomador!, tomador.pais);
       break;
     case 'nao-informado':
-      await clicar(page, s.tomadorNaoInformado!);
+      await marcarRadio(page, s.tomadorNaoInformado!);
       break;
   }
 }

@@ -296,8 +296,18 @@ program
           for (const campo of await lerEstadoPasso(page, etapa.passo)) {
             console.log(`      ${campo.nome} = ${campo.valor}`);
           }
+          const urlAntesDeAvancar = page.url();
           await etapa.avancar();
           const errosValidacao = await lerErrosValidacao(page);
+          if (page.url() === urlAntesDeAvancar && errosValidacao.length > 0) {
+            // Continuou na mesma página com erro de validação = Avançar recusado.
+            // Verificar o passo seguinte aqui só geraria ruído.
+            interrompidoEm = etapa.passo;
+            console.log(`  — o portal RECUSOU o Avançar do ${etapa.passo} com validação:`);
+            for (const e of errosValidacao) console.log(`      · ${e}`);
+            console.log('  Os passos seguintes ficaram sem verificação nesta rodada.');
+            break;
+          }
           if (errosValidacao.length > 0) {
             console.log(`  — o portal mostrou validação após o Avançar:`);
             for (const e of errosValidacao) console.log(`      · ${e}`);

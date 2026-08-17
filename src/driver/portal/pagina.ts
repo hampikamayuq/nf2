@@ -104,25 +104,53 @@ export async function clicar(page: Page, entrada: EntradaSeletor): Promise<void>
   }
 }
 
-/** Marca (ou desmarca) um checkbox de forma idempotente, via JS — os do portal também são estilizados/ocultos. */
-export async function marcarCheckbox(page: Page, entrada: EntradaSeletor, desejado: boolean): Promise<void> {
-  const ok = await page.evaluate(
+/**
+ * Marca um radio/checkbox estilizado E VERIFICA que pegou. O portal
+ * intercepta o clique nesses controles (verificado ao vivo em 17/08/2026:
+ * `el.click()` não marcava), então a sequência é: clique JS; se não pegou,
+ * seta `checked` direto e dispara click/input/change para o framework da
+ * página reagir; confere o estado no final e falha alto se continuar errado.
+ */
+async function marcarInput(page: Page, entrada: EntradaSeletor, desejado: boolean): Promise<void> {
+  const resultado = await page.evaluate(
     ([seletor, valor]) => {
       let el: Element | null = null;
       try {
         el = document.querySelector(seletor as string);
       } catch {
-        return false;
+        return 'nao-achou';
       }
-      if (!(el instanceof HTMLInputElement)) return false;
+      if (!(el instanceof HTMLInputElement)) return 'nao-achou';
       if (el.checked !== valor) el.click();
-      return true;
+      if (el.checked !== valor) {
+        el.checked = valor as boolean;
+        el.dispatchEvent(new Event('click', { bubbles: true }));
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+        el.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+      return el.checked === valor ? 'ok' : 'nao-pegou';
     },
     [entrada.seletor, desejado] as const
   );
-  if (!ok) {
-    throw new SeletorNaoEncontradoError(entrada, 'Checkbox não encontrado na página.');
+  if (resultado === 'nao-achou') {
+    throw new SeletorNaoEncontradoError(entrada, 'Radio/checkbox não encontrado na página.');
   }
+  if (resultado === 'nao-pegou') {
+    throw new SeletorNaoEncontradoError(
+      entrada,
+      'O radio/checkbox existe mas não aceitou a marcação nem por clique nem por checked+eventos.'
+    );
+  }
+}
+
+/** Seleciona um radio estilizado (sempre marcando — radio não desmarca). */
+export async function marcarRadio(page: Page, entrada: EntradaSeletor): Promise<void> {
+  await marcarInput(page, entrada, true);
+}
+
+/** Marca (ou desmarca) um checkbox de forma idempotente, com a mesma verificação do radio. */
+export async function marcarCheckbox(page: Page, entrada: EntradaSeletor, desejado: boolean): Promise<void> {
+  await marcarInput(page, entrada, desejado);
 }
 
 /**
